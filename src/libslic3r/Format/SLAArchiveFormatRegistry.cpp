@@ -8,6 +8,7 @@
 #include "SL1.hpp"
 #include "SL1_SVG.hpp"
 #include "AnycubicSLA.hpp"
+#include "UVtoolsArchive.hpp"
 #include "libslic3r/I18N.hpp"
 #include "SLAArchiveFormatRegistry.hpp"
 #include "libslic3r/Format/SLAArchiveReader.hpp"
@@ -50,6 +51,10 @@ class Registry {
             anycubic_sla_format("pwmo", "Photon Mono"),
             anycubic_sla_format("pwmx", "Photon Mono X"),
             anycubic_sla_format("pwms", "Photon Mono SE"),
+
+            // Converted from SL1 by UVtoolsCmd (https://github.com/sn4k3/UVtools)
+            uvtools_sla_format("GOO", L("Elegoo GOO (via UVtools)"), "goo", "GooFile"),
+            uvtools_sla_format("CXDLPV4", L("Creality CXDLPv4 (via UVtools)"), "cxdlpv4", "CrealityCXDLPv4File"),
 
             /**
                 // Supports only ANYCUBIC_SLA_VERSION_1
