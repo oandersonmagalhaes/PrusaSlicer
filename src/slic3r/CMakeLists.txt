@@ -394,6 +394,12 @@ set(SLIC3R_GUI_SOURCES
     Utils/TCPConsole.hpp
     Utils/MKS.cpp
     Utils/MKS.hpp
+    Utils/HalotProtocol.cpp
+    Utils/HalotProtocol.hpp
+    Utils/HalotClient.cpp
+    Utils/HalotClient.hpp
+    Utils/CrealityHalot.cpp
+    Utils/CrealityHalot.hpp
     Utils/WinRegistry.cpp
     Utils/WinRegistry.hpp
     Utils/WxFontUtils.cpp

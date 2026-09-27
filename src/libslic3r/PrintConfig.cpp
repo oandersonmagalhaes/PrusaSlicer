@@ -109,6 +109,7 @@ static const t_config_enum_values s_keys_map_PrintHostType {
     { "astrobox",       htAstroBox },
     { "repetier",       htRepetier },
     { "mks",            htMKS },
+    { "halot",          htCrealityHalot },
     { "prusaconnectnew", htPrusaConnectNew },
 
 };
@@ -2535,7 +2536,8 @@ void PrintConfigDef::init_fff_params()
         { "flashair",       "FlashAir" },
         { "astrobox",       "AstroBox" },
         { "repetier",       "Repetier" },
-        { "mks",            "MKS" }
+        { "mks",            "MKS" },
+        { "halot",          "Creality Halot" }
     });
     def->mode = comAdvanced;
     def->cli = ConfigOptionDef::nocli;

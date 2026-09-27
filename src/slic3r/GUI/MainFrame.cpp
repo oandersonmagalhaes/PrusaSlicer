@@ -935,7 +935,9 @@ void MainFrame::show_printer_webview_tab(DynamicPrintConfig* dpc)
     
     remove_printer_webview_tab();
     // if physical printer is selected
-    if (dpc && dpc->option<ConfigOptionEnum<PrintHostType>>("host_type")->value != htPrusaConnect) {
+    // HALOT printers have no web interface.
+    const PrintHostType host_type = dpc ? dpc->option<ConfigOptionEnum<PrintHostType>>("host_type")->value : htPrusaConnect;
+    if (dpc && host_type != htPrusaConnect && host_type != htCrealityHalot) {
         std::string url = dpc->opt_string("print_host");
         if (url.find("http://") != 0 && url.find("https://") != 0) {
             url = "http://" + url;

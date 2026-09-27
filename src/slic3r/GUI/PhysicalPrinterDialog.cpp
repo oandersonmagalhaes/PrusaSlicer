@@ -18,6 +18,7 @@
 #include <wx/statbox.h>
 #include <wx/wupdlock.h>
 #include <wx/tooltip.h>
+#include <wx/choicdlg.h>
 #if wxUSE_SECRETSTORE 
 #include <wx/secretstore.h>
 #endif
@@ -39,6 +40,7 @@
 #include "../Utils/FixModelByWin10.hpp"
 #include "../Utils/UndoRedo.hpp"
 #include "../Utils/ServiceConfig.hpp"
+#include "../Utils/HalotClient.hpp"
 #include "RemovableDriveManager.hpp"
 #include "BitmapCache.hpp"
 #include "BonjourDialog.hpp"
@@ -375,6 +377,12 @@ void PhysicalPrinterDialog::update_printers()
 void PhysicalPrinterDialog::build_printhost_settings(ConfigOptionsGroup* m_optgroup)
 {
     m_optgroup->on_change = [this](t_config_option_key opt_key, boost::any value) {
+        // The combo box stores the index of the entry, turn it into the host type.
+        if (opt_key == "host_type") {
+            const int index = m_config->option("host_type")->getInt();
+            if (index >= 0 && index < int(m_host_type_of_choice.size()))
+                m_config->set_key_value("host_type", new ConfigOptionEnum<PrintHostType>(m_host_type_of_choice[index]));
+        }
         if (opt_key == "host_type" || opt_key == "printhost_authorization_type")
             this->update();
         if (opt_key == "print_host")
@@ -396,6 +404,10 @@ void PhysicalPrinterDialog::build_printhost_settings(ConfigOptionsGroup* m_optgr
     {
         auto sizer = create_sizer_with_btn(parent, &m_printhost_browse_btn, "browse", _L("Browse") + " " + dots);
         m_printhost_browse_btn->Bind(wxEVT_BUTTON, [=](wxCommandEvent& e) {
+            if (m_config->option<ConfigOptionEnum<PrintHostType>>("host_type")->value == htCrealityHalot) {
+                browse_halot_printers();
+                return;
+            }
             BonjourDialog dialog(this, Preset::printer_technology(m_printer.config));
             if (dialog.show_and_lookup()) {
                 m_optgroup->set_value("print_host", dialog.get_selected(), true);
@@ -616,6 +628,33 @@ void PhysicalPrinterDialog::build_printhost_settings(ConfigOptionsGroup* m_optgr
     update(true);
 }
 
+// Finds HALOT printers the way HalotBox does and puts the chosen one's IP
+// into the host field.
+void PhysicalPrinterDialog::browse_halot_printers()
+{
+    std::vector<halot::Printer> found;
+    {
+        wxBusyCursor wait;
+        found = halot::discover(std::chrono::seconds(2));
+    }
+
+    if (found.empty()) {
+        MessageDialog(this, _L("No HALOT printer answered. Check that it is on and connected to the same WiFi network as this computer."),
+                      _L("HALOT printers on the network"), wxICON_INFORMATION | wxOK).ShowModal();
+        return;
+    }
+
+    wxArrayString choices;
+    for (const halot::Printer &p : found)
+        choices.Add(GUI::format_wxstr("%1%  -  %2%  (%3%)", p.ip, halot::model_name(p.model), p.serial));
+
+    wxSingleChoiceDialog dialog(this, _L("Choose the printer:"), _L("HALOT printers on the network"), choices);
+    if (dialog.ShowModal() == wxID_OK) {
+        m_optgroup->set_value("print_host", from_u8(found[dialog.GetSelection()].ip), true);
+        m_optgroup->get_field("print_host")->field_changed();
+    }
+}
+
 void PhysicalPrinterDialog::update_printhost_buttons()
 {
     std::unique_ptr<PrintHost> host(PrintHost::get_print_host(m_config));
@@ -673,16 +712,25 @@ void PhysicalPrinterDialog::update(bool printer_change)
         m_last_host_type = opt->value;
     }
     else {
-        m_optgroup->set_value("host_type", int(PrintHostType::htOctoPrint), false);
-        m_optgroup->hide_field("host_type");
+        // Resin printers: the SL1 host (as OctoPrint) or a Creality HALOT printer.
+        update_host_type(printer_change);
+        m_optgroup->show_field("host_type");
 
-        m_optgroup->show_field("printhost_authorization_type");
+        if (m_config->option<ConfigOptionEnum<PrintHostType>>("host_type")->value == htCrealityHalot) {
+            // HALOT printers only need the password set on the printer (HALOT BOX).
+            m_optgroup->hide_field("printhost_authorization_type");
+            m_optgroup->hide_field("printhost_apikey");
+            m_optgroup->hide_field("printhost_user");
+            m_optgroup->show_field("printhost_password");
+        } else {
+            m_optgroup->show_field("printhost_authorization_type");
 
-        AuthorizationType auth_type = m_config->option<ConfigOptionEnum<AuthorizationType>>("printhost_authorization_type")->value;
-        m_optgroup->show_field("printhost_apikey", auth_type == AuthorizationType::atKeyPassword);
+            AuthorizationType auth_type = m_config->option<ConfigOptionEnum<AuthorizationType>>("printhost_authorization_type")->value;
+            m_optgroup->show_field("printhost_apikey", auth_type == AuthorizationType::atKeyPassword);
 
-        for (const char *opt_key : { "printhost_user", "printhost_password" })
-            m_optgroup->show_field(opt_key, auth_type == AuthorizationType::atUserPassword);
+            for (const char *opt_key : { "printhost_user", "printhost_password" })
+                m_optgroup->show_field(opt_key, auth_type == AuthorizationType::atUserPassword);
+        }
     }
 
     m_optgroup->show_field("printhost_port", supports_multiple_printers);
@@ -783,15 +831,19 @@ void PhysicalPrinterDialog::update_host_type(bool printer_change)
 
     Field* ht = m_optgroup->get_field("host_type");
     wxArrayString types;
-    int last_in_conf = m_config->option("host_type")->getInt(); //  this is real position in last choice
+    m_host_type_of_choice.clear();
 
+    // Resin printers upload to the SL1 host (as OctoPrint) or to HALOT
+    // printers, filament printers to anything but HALOT printers.
+    const bool sla = Preset::printer_technology(*m_config) == ptSLA;
 
     // Append localized enum_labels
     assert(ht->m_opt.enum_def->labels().size() == ht->m_opt.enum_def->values().size());
     for (size_t i = 0; i < ht->m_opt.enum_def->labels().size(); ++ i) {
         wxString label = _(ht->m_opt.enum_def->label(i));
-        if (const std::string &value = ht->m_opt.enum_def->value(i);
-            value == "prusalink") {
+        const std::string &value = ht->m_opt.enum_def->value(i);
+        const auto type = PrintHostType(ConfigOptionEnum<PrintHostType>::get_enum_values().at(value));
+        if (value == "prusalink") {
             link.label = label;
             if (!link.supported)
                 continue;
@@ -800,23 +852,24 @@ void PhysicalPrinterDialog::update_host_type(bool printer_change)
             if (!connect.supported)
                 continue;
         }
+        if (sla ? (type != htOctoPrint && type != htCrealityHalot) : type == htCrealityHalot)
+            continue;
 
         types.Add(label);
+        m_host_type_of_choice.push_back(type);
     }
 
     Choice* choice = dynamic_cast<Choice*>(ht);
     choice->set_values(types);
-    int index_in_choice = (printer_change ? std::clamp(last_in_conf - ((int)ht->m_opt.enum_def->values().size() - (int)types.size()), 0, (int)ht->m_opt.enum_def->values().size() - 1) : last_in_conf);
+
+    // The config holds a host type (the combo index is converted in on_change).
+    // A type the printer doesn't offer falls back to the first entry.
+    const auto current = PrintHostType(m_config->option("host_type")->getInt());
+    auto it = std::find(m_host_type_of_choice.begin(), m_host_type_of_choice.end(), current);
+    const int index_in_choice = it == m_host_type_of_choice.end() ? 0 : int(it - m_host_type_of_choice.begin());
     choice->set_value(index_in_choice);
-    if (link.supported && link.label == _(ht->m_opt.enum_def->label(index_in_choice)))
-        m_config->set_key_value("host_type", new ConfigOptionEnum<PrintHostType>(htPrusaLink));
-    else if (connect.supported && connect.label == _(ht->m_opt.enum_def->label(index_in_choice)))
-        m_config->set_key_value("host_type", new ConfigOptionEnum<PrintHostType>(htPrusaConnect));
-    else {
-        int host_type = std::clamp(index_in_choice + ((int)ht->m_opt.enum_def->values().size() - (int)types.size()), 0, (int)ht->m_opt.enum_def->values().size() - 1);
-        PrintHostType type = static_cast<PrintHostType>(host_type);
-        m_config->set_key_value("host_type", new ConfigOptionEnum<PrintHostType>(type));
-    }
+    if (!m_host_type_of_choice.empty())
+        m_config->set_key_value("host_type", new ConfigOptionEnum<PrintHostType>(m_host_type_of_choice[index_in_choice]));
 }
 
 

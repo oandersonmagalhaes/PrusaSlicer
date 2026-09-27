@@ -28,6 +28,7 @@
 #include "AstroBox.hpp"
 #include "Repetier.hpp"
 #include "MKS.hpp"
+#include "CrealityHalot.hpp"
 #include "Moonraker.hpp"
 #include "PrusaConnect.hpp"
 #include "../GUI/PrintHostDialogs.hpp"
@@ -66,6 +67,7 @@ PrintHost* PrintHost::get_print_host(DynamicPrintConfig *config)
             case htPrusaConnect: return new PrusaConnect(config);
             case htPrusaConnectNew: return new PrusaConnectNew(config);
             case htMKS:       return new MKS(config);
+            case htCrealityHalot: return new CrealityHalot(config);
             case htMoonraker: return new Moonraker(config);
             default:          return nullptr;
         }
@@ -73,7 +75,9 @@ PrintHost* PrintHost::get_print_host(DynamicPrintConfig *config)
         const auto opt = config->option<ConfigOptionEnum<PrintHostType>>("host_type");
         if (opt != nullptr && opt->value == htPrusaConnectNew) {
             return new PrusaConnectNew(config);
-        }        
+        }
+        if (opt != nullptr && opt->value == htCrealityHalot)
+            return new CrealityHalot(config);
         return new SL1Host(config);
     }
 }

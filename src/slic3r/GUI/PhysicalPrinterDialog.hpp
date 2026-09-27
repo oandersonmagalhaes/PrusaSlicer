@@ -82,6 +82,8 @@ class PhysicalPrinterDialog : public DPIDialog
 
     wxString            m_stored_host;
     PrintHostType       m_last_host_type;
+    // Host type of each entry of the host type combo box (some types are hidden).
+    std::vector<PrintHostType> m_host_type_of_choice;
     bool                m_opened_as_connect {false};
 
     void build_printhost_settings(ConfigOptionsGroup* optgroup);
@@ -94,6 +96,7 @@ public:
 
     void        update(bool printer_change = false);
     void        update_host_type(bool printer_change);
+    void        browse_halot_printers();
     void        update_printhost_buttons();
     void        update_printers();
     wxString    get_printer_name();
