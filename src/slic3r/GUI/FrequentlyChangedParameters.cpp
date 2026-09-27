@@ -27,6 +27,7 @@
 #include <wx/button.h>
 
 #include "libslic3r/PresetBundle.hpp"
+#include "libslic3r/SLA/SupportSizes.hpp"
 
 #include "GUI_App.hpp"
 #include "wxExtensions.hpp"
@@ -235,6 +236,18 @@ FreqChangedParams::FreqChangedParams(wxWindow* parent)
             else if (selection == _("Around object"))
                 new_conf.set_key_value("pad_around_object", new ConfigOptionBool(true));
         }
+        else if (opt_key == "support_size") {
+            // Light / Medium / Heavy set every support size at once, like
+            // CHITUBOX. "Custom" keeps the current values.
+            const wxString& selection = boost::any_cast<wxString>(value);
+            const std::string treetype = get_sla_suptree_prefix(new_conf);
+            if (selection == _("Light"))
+                sla::apply_support_size(new_conf, sla::SupportSize::light, treetype);
+            else if (selection == _("Medium"))
+                sla::apply_support_size(new_conf, sla::SupportSize::medium, treetype);
+            else if (selection == _("Heavy"))
+                sla::apply_support_size(new_conf, sla::SupportSize::heavy, treetype);
+        }
         else
         {
             assert(opt_key == "support");
@@ -291,10 +304,33 @@ FreqChangedParams::FreqChangedParams(wxWindow* parent)
 
     m_og_sla->append_line(line);
 
+    line = Line{ "", "" };
+
+    ConfigOptionDef support_size_def;
+    support_size_def.label = L("Support size");
+    support_size_def.type = coStrings;
+    support_size_def.tooltip = L("Sets the tip, pillar and base sizes of the supports at once. "
+                                 "Custom means the values were edited in Print Settings.");
+    support_size_def.set_enum_labels(ConfigOptionDef::GUIType::select_close, {
+        L("Light"),
+        L("Medium"),
+        L("Heavy"),
+        L("Custom")
+    });
+    support_size_def.set_default_value(new ConfigOptionStrings{ "Custom" });
+    option = Option(support_size_def, "support_size");
+    option.opt.full_width = true;
+    line.append_option(option);
+    line.append_widget(empty_widget);
+
+    m_og_sla->append_line(line);
+
     m_og_sla->activate();
     choice = dynamic_cast<Choice*>(m_og_sla->get_field("support"));
     choice->suppress_scroll();
     choice = dynamic_cast<Choice*>(m_og_sla->get_field("pad"));
+    choice->suppress_scroll();
+    choice = dynamic_cast<Choice*>(m_og_sla->get_field("support_size"));
     choice->suppress_scroll();
 
     m_sizer = new wxBoxSizer(wxVERTICAL);

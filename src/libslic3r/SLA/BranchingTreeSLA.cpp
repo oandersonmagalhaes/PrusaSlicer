@@ -372,6 +372,8 @@ inline void build_pillars(SupportTreeBuilder &builder,
 
 void create_branching_tree(SupportTreeBuilder &builder, const SupportableMesh &sm)
 {
+    builder.set_shapes(sm.cfg.shapes);
+
     auto coordfn = [&sm](size_t id, size_t dim) { return sm.pts[id].pos(dim); };
     KDTreeIndirect<3, float, decltype (coordfn)> tree{coordfn, sm.pts.size()};
 

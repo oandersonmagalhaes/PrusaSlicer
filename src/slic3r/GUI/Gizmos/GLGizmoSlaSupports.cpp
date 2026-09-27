@@ -22,9 +22,13 @@
 #include "slic3r/GUI/MsgDialog.hpp"
 #include "libslic3r/PresetBundle.hpp"
 #include "libslic3r/SLAPrint.hpp"
+#include "libslic3r/SLA/SupportSizes.hpp"
+#include "libslic3r/SLA/SupportTuning.hpp"
+#include "slic3r/GUI/Tab.hpp"
 
 #include "libslic3r/SLA/SupportIslands/SampleConfigFactory.hpp"
 #include "imgui/imgui_stdlib.h" // string input for ImGui
+#include "imgui/imgui_internal.h" // ImGui::PushItemFlag
 static const double CONE_RADIUS = 0.25;
 static const double CONE_HEIGHT = 0.75;
 
@@ -115,6 +119,7 @@ bool GLGizmoSlaSupports::on_init()
     m_shortcut_key = WXK_CONTROL_L;
 
     m_desc["head_diameter"]    = _u8L("Head diameter") + ": ";
+    m_desc["support_size"]     = _u8L("Support size") + ": ";
     m_desc["lock_supports"]    = _u8L("Lock supports under new islands");
     m_desc["remove_selected"]  = _u8L("Remove selected points");
     m_desc["remove_all"]       = _u8L("Remove all points");
@@ -125,6 +130,29 @@ bool GLGizmoSlaSupports::on_init()
     m_desc["manual_editing"]   = _u8L("Manual editing");
     m_desc["clipping_of_view"] = _u8L("Clipping of view")+ ": ";
     m_desc["reset_direction"]  = _u8L("Reset direction");
+
+    // Support settings of the object
+    m_desc["tuning_title"]     = _u8L("Support settings of this object");
+    m_desc["tuning_size"]      = _u8L("Size");
+    m_desc["tuning_tip"]       = _u8L("Tip");
+    m_desc["tuning_body"]      = _u8L("Body");
+    m_desc["tuning_base"]      = _u8L("Base");
+    m_desc["tuning_raft"]      = _u8L("Raft (skate)");
+    m_desc["tuning_shape"]     = _u8L("Shape");
+    m_desc["tuning_diameter"]  = _u8L("Diameter");
+    m_desc["tuning_penetration"] = _u8L("Penetration");
+    m_desc["tuning_length"]    = _u8L("Length");
+    m_desc["tuning_thickness"] = _u8L("Thickness");
+    m_desc["tuning_bracing"]   = _u8L("Bracing");
+    m_desc["tuning_bracing_distance"] = _u8L("Bracing distance");
+    m_desc["tuning_height"]    = _u8L("Height");
+    m_desc["tuning_elevation"] = _u8L("Object elevation");
+    m_desc["tuning_raft_type"] = _u8L("Type");
+    m_desc["tuning_brim"]      = _u8L("Brim");
+    m_desc["tuning_opening"]   = _u8L("Grid opening");
+    m_desc["tuning_bar"]       = _u8L("Grid bar width");
+    m_desc["tuning_save"]      = _u8L("Save to print profile");
+    m_desc["tuning_material"]  = _u8L("The resin profile overrides some of these values (Material Overrides).");
         
     return true;
 }
@@ -396,7 +424,9 @@ bool GLGizmoSlaSupports::gizmo_event(SLAGizmoEventType action, const Vec2d& mous
                 std::pair<Vec3f, Vec3f> pos_and_normal;
                 if (unproject_on_mesh(mouse_position, pos_and_normal)) { // we got an intersection
                     Plater::TakeSnapshot snapshot(wxGetApp().plater(), _L("Add support point"));
-                    m_editing_cache.emplace_back(sla::SupportPoint{pos_and_normal.first, m_new_point_head_diameter/2.f}, false, pos_and_normal.second);
+                    m_editing_cache.emplace_back(sla::SupportPoint{pos_and_normal.first, m_new_point_head_diameter/2.f,
+                                                                   sla::SupportPointType::manual_add, m_new_point_size},
+                                                 false, pos_and_normal.second);
                     m_parent.set_as_dirty();
                     m_wait_for_up_event = true;
                     unregister_point_raycasters_for_picking();
@@ -589,6 +619,260 @@ std::vector<const ConfigOption*> GLGizmoSlaSupports::get_config_options(const st
     return out;
 }
 
+namespace {
+
+// Greys out the controls in its scope. Unlike ImGuiWrapper::disabled_begin()
+// it can be nested, which the support settings need inside the disabled
+// block of the panel.
+struct ScopedDisabled
+{
+    bool on;
+    explicit ScopedDisabled(bool disabled) : on(disabled)
+    {
+        if (on) {
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+        }
+    }
+    ~ScopedDisabled()
+    {
+        if (on) {
+            ImGui::PopStyleVar();
+            ImGui::PopItemFlag();
+        }
+    }
+};
+
+} // namespace
+
+void GLGizmoSlaSupports::render_support_tuning(ModelObject &mo, float window_width)
+{
+    // The values are overrides of this object, like the density slider.
+    // "Save to print profile" moves them into the print profile.
+    const DynamicPrintConfig &profile = wxGetApp().preset_bundle->sla_prints.get_edited_preset().config;
+    DynamicPrintConfig cfg = profile;
+    cfg.apply(mo.config.get(), true);
+    const std::string prefix = get_sla_suptree_prefix(cfg);
+
+    // One undo step: keeps the tip and penetration valid and refreshes the
+    // preview.
+    auto commit = [this, &mo, &profile, &prefix](const DynamicPrintConfig &changes) {
+        Plater::TakeSnapshot snapshot(wxGetApp().plater(), _L("Support parameter change"));
+        mo.config.apply(changes);
+
+        DynamicPrintConfig merged = profile;
+        merged.apply(mo.config.get(), true);
+        const DynamicPrintConfig before = merged;
+        if (sla::clamp_support_tuning(merged, prefix))
+            for (const char *k : {"support_head_front_diameter", "support_head_penetration"})
+                if (merged.opt_float(prefix + k) != before.opt_float(prefix + k))
+                    mo.config.set(prefix + k, merged.opt_float(prefix + k));
+
+        wxGetApp().obj_list()->update_and_show_object_settings_item();
+        if (m_show_support_structure)
+            reslice_until_step(slaposPad);
+    };
+
+    const char *labels[] = {"tuning_size", "tuning_shape", "tuning_diameter", "tuning_penetration",
+                            "tuning_length", "tuning_thickness", "tuning_bracing", "tuning_bracing_distance",
+                            "tuning_height", "tuning_elevation", "tuning_raft_type", "tuning_brim",
+                            "tuning_opening", "tuning_bar"};
+    float label_w = 0.f;
+    for (const char *l : labels)
+        label_w = std::max(label_w, ImGuiPureWrap::calc_text_size(m_desc.at(l)).x);
+    label_w += m_imgui->scaled(1.5f); // room for the tree indent
+    const float item_w = std::max(window_width - label_w, m_imgui->scaled(8.f));
+
+    auto label = [this, label_w](const char *desc) {
+        ImGui::AlignTextToFramePadding();
+        ImGuiPureWrap::text(m_desc.at(desc));
+        ImGui::SameLine(label_w);
+    };
+
+    // Values are written live while dragging and committed as one undo step
+    // on release, like the density slider.
+    auto slider = [&](const char *desc, const std::string &key, float min, float max, const char *fmt) {
+        float value = float(cfg.opt_float(key));
+        label(desc);
+        ImGui::PushItemWidth(item_w);
+        const ConfigOptionDef *def = print_config_def.get(key);
+        if (m_imgui->slider_float(("##" + key).c_str(), &value, min, max, fmt, 1.f, true,
+                                  def ? _(def->tooltip) : wxString())) {
+            if (m_tuning_key != key) {
+                m_tuning_key = key;
+                const ConfigOption *old = mo.config.get().option(key);
+                m_tuning_old.reset(old ? old->clone() : nullptr);
+            }
+            mo.config.set(key, double(value));
+        }
+        ImGui::PopItemWidth();
+
+        if (m_imgui->get_last_slider_status().deactivated_after_edit && m_tuning_key == key) {
+            if (m_tuning_old)
+                mo.config.set_key_value(key, m_tuning_old->clone());
+            else
+                mo.config.erase(key);
+            m_tuning_key.clear();
+            m_tuning_old.reset();
+
+            DynamicPrintConfig changes;
+            changes.set_key_value(key, new ConfigOptionFloat(value));
+            commit(changes);
+        }
+    };
+
+    auto combo = [&](const char *desc, const std::string &key, const std::vector<std::string> &names, int selected) {
+        label(desc);
+        int choice = selected;
+        const bool changed = ImGuiPureWrap::combo("##" + key, names, choice, 0, 0.f, item_w);
+        ImGui::PopItemWidth(); // combo() pushes the item width
+        return changed && choice != selected ? choice : -1;
+    };
+
+    auto group = [](const std::string &title) {
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        return ImGui::TreeNode(title.c_str());
+    };
+
+    ImGui::Separator();
+    ImGuiPureWrap::text(m_desc.at("tuning_title"));
+
+    std::optional<ScopedDisabled> supports_off;
+    supports_off.emplace(!cfg.opt_bool("supports_enable"));
+
+    // Light / Medium / Heavy set tip, head, pillar and base at once.
+    label("tuning_size");
+    const std::pair<sla::SupportSize, std::string> sizes[] = {
+        {sla::SupportSize::light, _u8L("Light")}, {sla::SupportSize::medium, _u8L("Medium")}, {sla::SupportSize::heavy, _u8L("Heavy")}};
+    const std::optional<sla::SupportSize> current = sla::match_support_size(cfg, prefix);
+    for (const auto &[size, name] : sizes) {
+        const bool active = current == size;
+        if (active)
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        if (ImGuiPureWrap::button(name)) {
+            DynamicPrintConfig changes;
+            sla::apply_support_size(changes, size, prefix);
+            commit(changes);
+        }
+        if (active)
+            ImGui::PopStyleColor();
+        ImGui::SameLine();
+    }
+    ImGui::TextColored(ImVec4{0.6f, 0.6f, 0.6f, 1.f}, "%s", current ? "" : _u8L("Custom").c_str());
+
+    if (group(m_desc.at("tuning_tip"))) {
+        if (int s = combo("tuning_shape", prefix + "support_head_shape", {_u8L("Ball"), _u8L("Cone (sharp tip)")},
+                          int(cfg.opt_enum<sla::HeadShape>(prefix + "support_head_shape"))); s >= 0) {
+            DynamicPrintConfig changes;
+            changes.set_key_value(prefix + "support_head_shape", new ConfigOptionEnum<sla::HeadShape>(sla::HeadShape(s)));
+            commit(changes);
+        }
+        slider("tuning_diameter", prefix + "support_head_front_diameter", 0.1f,
+               float(cfg.opt_float(prefix + "support_pillar_diameter")), "%.2f mm");
+        slider("tuning_penetration", prefix + "support_head_penetration", 0.f,
+               std::min(1.f, float(cfg.opt_float(prefix + "support_head_width"))), "%.2f mm");
+        slider("tuning_length", prefix + "support_head_width", 0.f, 5.f, "%.2f mm");
+        ImGui::TreePop();
+    }
+
+    if (group(m_desc.at("tuning_body"))) {
+        slider("tuning_thickness", prefix + "support_pillar_diameter", 0.3f, 3.f, "%.2f mm");
+        if (int s = combo("tuning_shape", prefix + "support_pillar_shape", {_u8L("Round"), _u8L("Square")},
+                          int(cfg.opt_enum<sla::PillarShape>(prefix + "support_pillar_shape"))); s >= 0) {
+            DynamicPrintConfig changes;
+            changes.set_key_value(prefix + "support_pillar_shape", new ConfigOptionEnum<sla::PillarShape>(sla::PillarShape(s)));
+            commit(changes);
+        }
+        if (int s = combo("tuning_bracing", prefix + "support_pillar_connection_mode",
+                          {_u8L("Zig-Zag"), _u8L("Cross"), _u8L("Dynamic")},
+                          int(cfg.opt_enum<SLAPillarConnectionMode>(prefix + "support_pillar_connection_mode"))); s >= 0) {
+            DynamicPrintConfig changes;
+            changes.set_key_value(prefix + "support_pillar_connection_mode",
+                                  new ConfigOptionEnum<SLAPillarConnectionMode>(SLAPillarConnectionMode(s)));
+            commit(changes);
+        }
+        slider("tuning_bracing_distance", prefix + "support_max_pillar_link_distance", 0.f, 30.f, "%.1f mm");
+        ImGui::TreePop();
+    }
+
+    if (group(m_desc.at("tuning_base"))) {
+        if (int s = combo("tuning_shape", prefix + "support_base_shape", {_u8L("Cone"), _u8L("Cylinder")},
+                          int(cfg.opt_enum<sla::BaseShape>(prefix + "support_base_shape"))); s >= 0) {
+            DynamicPrintConfig changes;
+            changes.set_key_value(prefix + "support_base_shape", new ConfigOptionEnum<sla::BaseShape>(sla::BaseShape(s)));
+            commit(changes);
+        }
+        slider("tuning_diameter", prefix + "support_base_diameter", 0.f, 10.f, "%.1f mm");
+        slider("tuning_height", prefix + "support_base_height", 0.f, 3.f, "%.1f mm");
+        const bool zero_elevation = cfg.opt_bool("pad_enable") && cfg.opt_bool("pad_around_object");
+        {
+            ScopedDisabled off(zero_elevation);
+            slider("tuning_elevation", prefix + "support_object_elevation", 0.f, 20.f, "%.1f mm");
+        }
+        ImGui::TreePop();
+    }
+
+    supports_off.reset();
+
+    if (group(m_desc.at("tuning_raft"))) {
+        const sla::RaftChoice raft = sla::raft_choice(cfg);
+        if (int s = combo("tuning_raft_type", "pad_raft_choice", {_u8L("None"), _u8L("Solid (skate)"), _u8L("Cross grid")},
+                          int(raft)); s >= 0) {
+            DynamicPrintConfig changes;
+            sla::set_raft_choice(changes, sla::RaftChoice(s));
+            commit(changes);
+        }
+        {
+            ScopedDisabled off(raft == sla::RaftChoice::none);
+            slider("tuning_thickness", "pad_wall_thickness", 0.5f, 5.f, "%.1f mm");
+            slider("tuning_brim", "pad_brim_size", 0.f, 10.f, "%.1f mm");
+        }
+        {
+            ScopedDisabled off(raft != sla::RaftChoice::grid);
+            slider("tuning_opening", "pad_grid_opening", 0.5f, 10.f, "%.1f mm");
+            slider("tuning_bar", "pad_grid_bar_width", 0.5f, 5.f, "%.1f mm");
+        }
+        ImGui::TreePop();
+    }
+
+    // The resin's Material Overrides win over these values.
+    const DynamicPrintConfig &material = wxGetApp().preset_bundle->sla_materials.get_edited_preset().config;
+    bool overridden = false;
+    for (const std::string &key : sla::support_tuning_keys(prefix))
+        if (const ConfigOption *ow = material.option("material_ow_" + key); ow && !ow->is_nil())
+            overridden = true;
+    if (overridden)
+        ImGui::TextColored(ImVec4{0.6f, 0.6f, 0.6f, 1.f}, "%s", m_desc.at("tuning_material").c_str());
+
+    // Move this object's values into the print profile, for the next objects.
+    const std::vector<std::string> keys = sla::support_tuning_keys(prefix);
+    const bool has_overrides = std::any_of(keys.begin(), keys.end(), [&mo](const std::string &k) { return mo.config.has(k); });
+    ScopedDisabled no_overrides(!has_overrides);
+    if (ImGuiPureWrap::button(m_desc.at("tuning_save"))) {
+        ModelObject *mo_ptr = &mo;
+        wxGetApp().CallAfter([mo_ptr, prefix]() {
+            Model &model = wxGetApp().plater()->model();
+            if (std::find(model.objects.begin(), model.objects.end(), mo_ptr) == model.objects.end())
+                return;
+            Tab *tab = wxGetApp().get_tab(Preset::TYPE_SLA_PRINT);
+            if (!tab)
+                return;
+
+            DynamicPrintConfig new_conf = wxGetApp().preset_bundle->sla_prints.get_edited_preset().config;
+            const std::vector<std::string> copied = sla::copy_tuning_to_profile(mo_ptr->config.get(), new_conf, prefix);
+
+            // The object follows the profile again.
+            Plater::TakeSnapshot snapshot(wxGetApp().plater(), _L("Save support settings to print profile"));
+            for (const std::string &k : copied)
+                mo_ptr->config.erase(k);
+
+            tab->load_config(new_conf);
+            tab->update_dirty();
+            wxGetApp().obj_list()->update_and_show_object_settings_item();
+        });
+    }
+}
+
 void GLGizmoSlaSupports::on_render_input_window(float x, float y, float bottom_limit)
 {
     // Keep resolution of icons for 
@@ -639,7 +923,8 @@ RENDER_AGAIN:
 
     const float settings_sliders_left = ImGuiPureWrap::calc_text_size(m_desc.at("points_density")).x + m_imgui->scaled(1.f);
     const float clipping_slider_left = std::max(ImGuiPureWrap::calc_text_size(m_desc.at("clipping_of_view")).x, ImGuiPureWrap::calc_text_size(m_desc.at("reset_direction")).x) + m_imgui->scaled(1.5f);
-    const float diameter_slider_left = ImGuiPureWrap::calc_text_size(m_desc.at("head_diameter")).x + m_imgui->scaled(1.f);
+    const float diameter_slider_left = std::max(ImGuiPureWrap::calc_text_size(m_desc.at("head_diameter")).x,
+                                                ImGuiPureWrap::calc_text_size(m_desc.at("support_size")).x) + m_imgui->scaled(1.f);
     const float minimal_slider_width = m_imgui->scaled(4.f);
     const float buttons_width_approx = ImGuiPureWrap::calc_text_size(m_desc.at("apply_changes")).x + ImGuiPureWrap::calc_text_size(m_desc.at("discard_changes")).x + m_imgui->scaled(1.5f);
     const float lock_supports_width_approx = ImGuiPureWrap::calc_text_size(m_desc.at("lock_supports")).x + m_imgui->scaled(2.f);
@@ -653,7 +938,32 @@ RENDER_AGAIN:
 
     if (m_editing_mode) {
 
-        float diameter_upper_cap = static_cast<ConfigOptionFloat*>(wxGetApp().preset_bundle->sla_prints.get_edited_preset().config.option("support_pillar_diameter"))->value;
+        const DynamicPrintConfig &print_cfg = wxGetApp().preset_bundle->sla_prints.get_edited_preset().config;
+
+        // CHITUBOX-style size for the selected points and the new ones. A size
+        // sets the tip, the cone and (in the default tree) the pillar.
+        const std::vector<std::string> size_names = {_u8L("From settings"), _u8L("Light"), _u8L("Medium"), _u8L("Heavy")};
+        int size_idx = int(m_new_point_size);
+        ImGui::AlignTextToFramePadding();
+        ImGuiPureWrap::text(m_desc.at("support_size"));
+        ImGui::SameLine(diameter_slider_left);
+        ImGui::PushItemWidth(window_width - diameter_slider_left);
+        if (ImGuiPureWrap::combo("##support_size", size_names, size_idx) && size_idx != int(m_new_point_size)) {
+            Plater::TakeSnapshot snapshot(wxGetApp().plater(), _L("Change support size"));
+            m_new_point_size = sla::SupportPointSize(size_idx);
+            auto size = sla::to_support_size(m_new_point_size);
+            m_new_point_head_diameter = size ? float(sla::support_size_spec(*size).head_front_diameter) :
+                                               float(print_cfg.opt_float("support_head_front_diameter"));
+            for (auto& cache_entry : m_editing_cache)
+                if (cache_entry.selected) {
+                    cache_entry.support_point.size = m_new_point_size;
+                    cache_entry.support_point.head_front_radius = m_new_point_head_diameter / 2.f;
+                }
+        }
+
+        // Sized points may have a thicker tip than the settings allow.
+        float diameter_upper_cap = std::max(float(print_cfg.opt_float("support_pillar_diameter")),
+                                            float(sla::support_size_spec(sla::SupportSize::heavy).head_front_diameter));
         if (m_new_point_head_diameter > diameter_upper_cap)
             m_new_point_head_diameter = diameter_upper_cap;
         ImGui::AlignTextToFramePadding();
@@ -808,6 +1118,8 @@ RENDER_AGAIN:
         ImGui::Separator();
         if (ImGuiPureWrap::button(m_desc.at("manual_editing")))
             switch_to_editing_mode();
+
+        render_support_tuning(*mo, window_width);
 
         m_imgui->disabled_end();
 
@@ -1153,6 +1465,7 @@ void GLGizmoSlaSupports::on_dragging(const UpdateData &data)
 void GLGizmoSlaSupports::on_load(cereal::BinaryInputArchive& ar)
 {
     ar(m_new_point_head_diameter,
+       m_new_point_size,
        m_normal_cache,
        m_editing_cache,
        m_selection_empty
@@ -1164,6 +1477,7 @@ void GLGizmoSlaSupports::on_load(cereal::BinaryInputArchive& ar)
 void GLGizmoSlaSupports::on_save(cereal::BinaryOutputArchive& ar) const
 {
     ar(m_new_point_head_diameter,
+       m_new_point_size,
        m_normal_cache,
        m_editing_cache,
        m_selection_empty
@@ -1184,13 +1498,16 @@ void GLGizmoSlaSupports::select_point(int i)
             point_and_selection.selected = ( i == AllPoints );
         m_selection_empty = (i == NoPoints);
 
-        if (i == AllPoints && !m_editing_cache.empty())
+        if (i == AllPoints && !m_editing_cache.empty()) {
             m_new_point_head_diameter = m_editing_cache[0].support_point.head_front_radius * 2.f;
+            m_new_point_size = m_editing_cache[0].support_point.size;
+        }
     }
     else {
         m_editing_cache[i].selected = true;
         m_selection_empty = false;
         m_new_point_head_diameter = m_editing_cache[i].support_point.head_front_radius * 2.f;
+        m_new_point_size = m_editing_cache[i].support_point.size;
     }
 }
 
@@ -1348,7 +1665,7 @@ void GLGizmoSlaSupports::get_data_from_backend()
             
             auto mat = po->trafo().inverse().cast<float>(); // TODO: WTF trafo????? !!!!!!
             for (const sla::SupportPoint &p : po->get_support_points())
-                m_normal_cache.emplace_back(sla::SupportPoint{mat * p.pos, p.head_front_radius, p.type});
+                m_normal_cache.emplace_back(sla::SupportPoint{mat * p.pos, p.head_front_radius, p.type, p.size});
 
             mo->sla_points_status = sla::PointsStatus::AutoGenerated;
             break;

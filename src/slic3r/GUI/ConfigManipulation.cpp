@@ -449,6 +449,9 @@ void ConfigManipulation::toggle_print_sla_options(DynamicPrintConfig* config)
     toggle_field("support_small_pillar_diameter_percent", supports_en && is_default_tree);
     toggle_field("support_max_bridges_on_pillar", supports_en && is_default_tree);
     toggle_field("support_pillar_connection_mode", supports_en && is_default_tree);
+    toggle_field("support_head_shape", supports_en && is_default_tree);
+    toggle_field("support_pillar_shape", supports_en && is_default_tree);
+    toggle_field("support_base_shape", supports_en && is_default_tree);
     toggle_field("support_buildplate_only", supports_en && is_default_tree);
     toggle_field("support_base_diameter", supports_en && is_default_tree);
     toggle_field("support_base_height", supports_en && is_default_tree);
@@ -467,6 +470,9 @@ void ConfigManipulation::toggle_print_sla_options(DynamicPrintConfig* config)
     toggle_field("branchingsupport_small_pillar_diameter_percent", supports_en && is_branching_tree);
     toggle_field("branchingsupport_max_bridges_on_pillar", false);
     toggle_field("branchingsupport_pillar_connection_mode", false);
+    toggle_field("branchingsupport_head_shape", supports_en && is_branching_tree);
+    toggle_field("branchingsupport_pillar_shape", supports_en && is_branching_tree);
+    toggle_field("branchingsupport_base_shape", supports_en && is_branching_tree);
     toggle_field("branchingsupport_buildplate_only", supports_en && is_branching_tree);
     toggle_field("branchingsupport_base_diameter", supports_en && is_branching_tree);
     toggle_field("branchingsupport_base_height", supports_en && is_branching_tree);
@@ -481,8 +487,13 @@ void ConfigManipulation::toggle_print_sla_options(DynamicPrintConfig* config)
 
     bool pad_en = config->opt_bool("pad_enable");
 
+    bool pad_grid = pad_en && config->opt_enum<sla::PadShape>("pad_shape") == sla::PadShape::grid;
+
     toggle_field("pad_wall_thickness", pad_en);
-    toggle_field("pad_wall_height", pad_en);
+    toggle_field("pad_wall_height", pad_en && !pad_grid);
+    toggle_field("pad_shape", pad_en);
+    toggle_field("pad_grid_opening", pad_grid);
+    toggle_field("pad_grid_bar_width", pad_grid);
     toggle_field("pad_brim_size", pad_en);
     toggle_field("pad_max_merge_distance", pad_en);
  // toggle_field("pad_edge_radius", supports_en);

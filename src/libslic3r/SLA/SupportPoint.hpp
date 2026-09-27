@@ -27,6 +27,10 @@ enum class SupportPointType {
     //edge
 };
 
+// Size of the support grown from a point, picked in manual editing like
+// CHITUBOX's Light / Medium / Heavy. from_settings uses the print settings.
+enum class SupportPointSize : unsigned char { from_settings, light, medium, heavy };
+
 /// <summary>
 /// Stereolithography(SLA) support point
 /// </summary>
@@ -41,16 +45,18 @@ struct SupportPoint
 
     // type
     SupportPointType type{SupportPointType::manual_add};
+
+    SupportPointSize size{SupportPointSize::from_settings};
     
     bool is_island() const { return type == SupportPointType::island; }
     template<class Archive> void serialize(Archive &ar){
-        ar(pos, head_front_radius, type);
+        ar(pos, head_front_radius, type, size);
     }
 
     // unsaved changes + cache invalidation
     bool operator==(const SupportPoint &sp) const {
         float rdiff = std::abs(head_front_radius - sp.head_front_radius);
-        return (pos == sp.pos) && rdiff < float(EPSILON) && type == sp.type;
+        return (pos == sp.pos) && rdiff < float(EPSILON) && type == sp.type && size == sp.size;
     }
 
     bool operator!=(const SupportPoint &sp) const { return !(sp == (*this)); }

@@ -79,6 +79,8 @@ sla::SupportTreeConfig make_support_cfg(const SLAPrintObjectConfig& c)
 
         scfg.max_bridges_on_pillar = unsigned(c.support_max_bridges_on_pillar.getInt());
         scfg.max_weight_on_model_support = c.support_max_weight_on_model.getFloat();
+        scfg.shapes = {c.support_head_shape.value, c.support_pillar_shape.value,
+                       c.support_base_shape.value};
         break;
     }
     case sla::SupportTreeType::Branching:
@@ -107,6 +109,8 @@ sla::SupportTreeConfig make_support_cfg(const SLAPrintObjectConfig& c)
 
         scfg.max_bridges_on_pillar = unsigned(c.branchingsupport_max_bridges_on_pillar.getInt());
         scfg.max_weight_on_model_support = c.branchingsupport_max_weight_on_model.getFloat();
+        scfg.shapes = {c.branchingsupport_head_shape.value, c.branchingsupport_pillar_shape.value,
+                       c.branchingsupport_base_shape.value};
         break;
     }
     }
@@ -142,6 +146,13 @@ sla::PadConfig make_pad_cfg(const SLAPrintObjectConfig& c)
     pcfg.max_merge_dist_mm = c.pad_max_merge_distance.getFloat();
     pcfg.wall_height_mm = c.pad_wall_height.getFloat();
     pcfg.brim_size_mm = c.pad_brim_size.getFloat();
+
+    pcfg.shape = c.pad_shape.value;
+    pcfg.grid_opening_mm = c.pad_grid_opening.getFloat();
+    pcfg.grid_bar_mm = c.pad_grid_bar_width.getFloat();
+    // A cavity would cut the grid bars off from the pad rim.
+    if (pcfg.shape == sla::PadShape::grid)
+        pcfg.wall_height_mm = 0.;
     
     // set builtin pad implicitly ON
     pcfg.embed_object = builtin_pad_cfg(c);
@@ -1104,6 +1115,9 @@ bool SLAPrintObject::invalidate_state_by_config_options(const std::vector<t_conf
             || opt_key == "support_max_bridge_length"
             || opt_key == "support_max_pillar_link_distance"
             || opt_key == "support_base_safety_distance"
+            || opt_key == "support_head_shape"
+            || opt_key == "support_pillar_shape"
+            || opt_key == "support_base_shape"
             || opt_key == "branchingsupport_head_front_diameter"
             || opt_key == "branchingsupport_head_penetration"
             || opt_key == "branchingsupport_head_width"
@@ -1120,6 +1134,9 @@ bool SLAPrintObject::invalidate_state_by_config_options(const std::vector<t_conf
             || opt_key == "branchingsupport_max_bridge_length"
             || opt_key == "branchingsupport_max_pillar_link_distance"
             || opt_key == "branchingsupport_base_safety_distance"
+            || opt_key == "branchingsupport_head_shape"
+            || opt_key == "branchingsupport_pillar_shape"
+            || opt_key == "branchingsupport_base_shape"
             || opt_key == "pad_object_gap"
             ) {
             steps.emplace_back(slaposSupportTree);
@@ -1128,6 +1145,9 @@ bool SLAPrintObject::invalidate_state_by_config_options(const std::vector<t_conf
             || opt_key == "pad_brim_size"
             || opt_key == "pad_max_merge_distance"
             || opt_key == "pad_wall_slope"
+            || opt_key == "pad_shape"
+            || opt_key == "pad_grid_opening"
+            || opt_key == "pad_grid_bar_width"
             || opt_key == "pad_edge_radius"
             || opt_key == "pad_object_connector_stride"
             || opt_key == "pad_object_connector_width"

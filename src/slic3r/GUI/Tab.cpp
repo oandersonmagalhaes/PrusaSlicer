@@ -73,6 +73,7 @@
 #include "TopBar.hpp"
 
 #include "Widgets/CheckBox.hpp"
+#include "libslic3r/SLA/SupportSizes.hpp"
 
 #ifdef WIN32
 	#include <CommCtrl.h>
@@ -1079,6 +1080,31 @@ static wxString pad_combo_value_for_config(const DynamicPrintConfig &config)
     return config.opt_bool("pad_enable") ? (config.opt_bool("pad_around_object") ? _("Around object") : _("Below object")) : _("None");
 }
 
+static wxString support_size_combo_value_for_config(const DynamicPrintConfig &config)
+{
+    const auto size = sla::match_support_size(config, get_sla_suptree_prefix(config));
+    if (size) {
+        switch (*size) {
+        case sla::SupportSize::light:  return _("Light");
+        case sla::SupportSize::medium: return _("Medium");
+        case sla::SupportSize::heavy:  return _("Heavy");
+        }
+    }
+    return _("Custom");
+}
+
+// True for the options the sidebar "Support size" combo is computed from.
+static bool is_support_size_key(std::string opt_key)
+{
+    if (opt_key == "support_tree_type")
+        return true;
+    if (boost::starts_with(opt_key, "branching"))
+        opt_key.erase(0, std::string("branching").size());
+    return opt_key == "support_head_front_diameter" || opt_key == "support_head_penetration" ||
+           opt_key == "support_head_width" || opt_key == "support_pillar_diameter" ||
+           opt_key == "support_base_diameter" || opt_key == "support_base_height";
+}
+
 void Tab::on_value_change(const std::string& opt_key, const boost::any& value)
 {
     if (wxGetApp().plater() == nullptr) {
@@ -1112,6 +1138,9 @@ void Tab::on_value_change(const std::string& opt_key, const boost::any& value)
 
     if (! is_fff && (opt_key == "pad_enable" || opt_key == "pad_around_object"))
         og_freq_chng_params->set_value("pad", pad_combo_value_for_config(*m_config));
+
+    if (! is_fff && is_support_size_key(opt_key))
+        og_freq_chng_params->set_value("support_size", support_size_combo_value_for_config(*m_config));
 
     if (opt_key == "brim_width")
     {
@@ -1398,8 +1427,10 @@ void Tab::update_frequently_changed_parameters()
     if (!og_freq_chng_params) return;
 
     og_freq_chng_params->set_value("support", support_combo_value_for_config(*m_config, is_fff));
-    if (! is_fff)
+    if (! is_fff) {
         og_freq_chng_params->set_value("pad", pad_combo_value_for_config(*m_config));
+        og_freq_chng_params->set_value("support_size", support_size_combo_value_for_config(*m_config));
+    }
 
     const std::string updated_value_key = is_fff ? "fill_density" : "pad_enable";
 
@@ -5865,9 +5896,11 @@ void TabSLAPrint::build_sla_support_params(const std::vector<SamePair<std::strin
     add_options_into_line(optgroup, prefixes, "support_head_front_diameter");
     add_options_into_line(optgroup, prefixes, "support_head_penetration");
     add_options_into_line(optgroup, prefixes, "support_head_width");
+    add_options_into_line(optgroup, prefixes, "support_head_shape");
 
     optgroup = page->new_optgroup(L("Support pillar"));
     add_options_into_line(optgroup, prefixes, "support_pillar_diameter");
+    add_options_into_line(optgroup, prefixes, "support_pillar_shape");
     add_options_into_line(optgroup, prefixes, "support_small_pillar_diameter_percent");
     add_options_into_line(optgroup, prefixes, "support_max_bridges_on_pillar");
 
@@ -5877,6 +5910,7 @@ void TabSLAPrint::build_sla_support_params(const std::vector<SamePair<std::strin
     add_options_into_line(optgroup, prefixes, "support_max_weight_on_model");
     add_options_into_line(optgroup, prefixes, "support_base_diameter");
     add_options_into_line(optgroup, prefixes, "support_base_height");
+    add_options_into_line(optgroup, prefixes, "support_base_shape");
     add_options_into_line(optgroup, prefixes, "support_base_safety_distance");
 
     // Mirrored parameter from Pad page for toggling elevation on the same page
@@ -6091,6 +6125,9 @@ void TabSLAPrint::build()
     // TODO: Disabling this parameter for the beta release
 //    optgroup->append_single_option_line("pad_edge_radius");
     optgroup->append_single_option_line("pad_wall_slope");
+    optgroup->append_single_option_line("pad_shape");
+    optgroup->append_single_option_line("pad_grid_opening");
+    optgroup->append_single_option_line("pad_grid_bar_width");
 
     optgroup->append_single_option_line("pad_around_object");
     optgroup->append_single_option_line("pad_around_object_everywhere");

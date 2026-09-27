@@ -164,6 +164,10 @@ enum SLADisplayOrientation {
 
 using SLASupportTreeType = sla::SupportTreeType;
 using SLAPillarConnectionMode = sla::PillarConnectionMode;
+using SLAHeadShape = sla::HeadShape;
+using SLAPillarShape = sla::PillarShape;
+using SLABaseShape = sla::BaseShape;
+using SLAPadShape = sla::PadShape;
 
 enum BrimType {
     btNoBrim,
@@ -301,6 +305,10 @@ CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(ScarfSeamPlacement)
 CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(SLADisplayOrientation)
 CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(SLAPillarConnectionMode)
 CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(SLASupportTreeType)
+CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(SLAHeadShape)
+CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(SLAPillarShape)
+CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(SLABaseShape)
+CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(SLAPadShape)
 CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(BrimType)
 CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(DraftShield)
 CONFIG_OPTION_ENUM_DECLARE_STATIC_MAPS(LabelObjectsStyle)
@@ -1107,6 +1115,11 @@ PRINT_CONFIG_CLASS_DEFINE(
     // How the pillars are bridged together
     ((ConfigOptionEnum<SLAPillarConnectionMode>, support_pillar_connection_mode))
 
+    // Shapes of the tip, the pillar and the foot of the supports.
+    ((ConfigOptionEnum<SLAHeadShape>, support_head_shape))
+    ((ConfigOptionEnum<SLAPillarShape>, support_pillar_shape))
+    ((ConfigOptionEnum<SLABaseShape>, support_base_shape))
+
     // Generate only ground facing supports
     ((ConfigOptionBool, support_buildplate_only))
 
@@ -1168,6 +1181,11 @@ PRINT_CONFIG_CLASS_DEFINE(
     // How the pillars are bridged together
     ((ConfigOptionEnum<SLAPillarConnectionMode>, branchingsupport_pillar_connection_mode))
 
+    // Shapes of the tip, the pillar and the foot of the supports.
+    ((ConfigOptionEnum<SLAHeadShape>, branchingsupport_head_shape))
+    ((ConfigOptionEnum<SLAPillarShape>, branchingsupport_pillar_shape))
+    ((ConfigOptionEnum<SLABaseShape>, branchingsupport_base_shape))
+
     // Generate only ground facing supports
     ((ConfigOptionBool, branchingsupport_buildplate_only))
 
@@ -1223,6 +1241,11 @@ PRINT_CONFIG_CLASS_DEFINE(
 
     // The slope of the pad wall...
     ((ConfigOptionFloat, pad_wall_slope))
+
+    // Solid plate or cross grid, and the grid's openings and bars.
+    ((ConfigOptionEnum<SLAPadShape>, pad_shape))
+    ((ConfigOptionFloat, pad_grid_opening))
+    ((ConfigOptionFloat, pad_grid_bar_width))
 
     // /////////////////////////////////////////////////////////////////////////
     // Zero elevation mode parameters:

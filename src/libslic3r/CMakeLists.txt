@@ -454,6 +454,10 @@ set(SLIC3R_SOURCES
     SLA/Hollowing.cpp
     SLA/JobController.hpp
     SLA/SupportPoint.hpp
+    SLA/SupportSizes.hpp
+    SLA/SupportSizes.cpp
+    SLA/SupportTuning.hpp
+    SLA/SupportTuning.cpp
     SLA/SupportPointGenerator.hpp
     SLA/SupportPointGenerator.cpp
     SLA/Clustering.hpp

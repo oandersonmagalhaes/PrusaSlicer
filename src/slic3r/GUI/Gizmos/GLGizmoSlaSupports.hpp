@@ -12,6 +12,9 @@
 
 #include "libslic3r/SLA/SupportPoint.hpp"
 #include "libslic3r/ObjectID.hpp"
+#include "libslic3r/Config.hpp"
+
+#include <memory>
 #include <wx/dialog.h>
 
 #include <cereal/types/vector.hpp>
@@ -94,15 +97,24 @@ private:
 
     void draw_island_config();
 
+    // CHITUBOX-style support settings (tip, body, base, raft) of the object.
+    void render_support_tuning(ModelObject &mo, float window_width);
+
     bool m_show_support_structure = false;
     bool m_lock_unique_islands = false;
     bool m_editing_mode = false;            // Is editing mode active?
     float m_new_point_head_diameter;        // Size of a new point.
+    sla::SupportPointSize m_new_point_size = sla::SupportPointSize::from_settings; // Light / Medium / Heavy of a new point
     CacheEntry m_point_before_drag;         // undo/redo - so we know what state was edited
     float m_old_point_head_diameter = 0.;   // the same
     mutable std::vector<CacheEntry> m_editing_cache; // a support point and whether it is currently selected
     std::vector<sla::SupportPoint> m_normal_cache; // to restore after discarding changes or undo/redo
     ObjectID m_old_mo_id;
+
+    // Support settings slider being dragged and the object's value before it
+    // (null when the object had no override), for the undo snapshot.
+    std::string m_tuning_key;
+    std::unique_ptr<ConfigOption> m_tuning_old;
 
     IconManager m_icon_manager;
     IconManager::Icons m_icons;

@@ -86,6 +86,9 @@ struct SupportTreeConfig
 
     double max_weight_on_model_support = 10.f;
 
+    // Shapes of the tips, pillars and feet.
+    SupportShapes shapes;
+
     double head_fullwidth() const {
         return 2 * head_front_radius_mm + head_width_mm +
                2 * head_back_radius_mm - head_penetration_mm;

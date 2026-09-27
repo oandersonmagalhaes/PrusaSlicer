@@ -13,6 +13,7 @@ add_executable(${_TEST_NAME}_tests ${_TEST_NAME}_tests_main.cpp
     sla_archive_readwrite_tests.cpp
     sla_zcorrection_tests.cpp
     sla_uvtools_tests.cpp
+    sla_chitubox_supports_tests.cpp
     )
 
 # mold linker for successful linking needs also to link TBB library and link it before libslic3r.

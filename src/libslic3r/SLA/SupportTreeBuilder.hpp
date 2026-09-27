@@ -8,6 +8,7 @@
 #include <libslic3r/Execution/ExecutionTBB.hpp>
 #include <libslic3r/SLA/SupportTree.hpp>
 #include <libslic3r/SLA/SupportTreeTypes.hpp>
+#include <libslic3r/SLA/SupportTreeStrategies.hpp>
 #include <libslic3r/TriangleMesh.hpp>
 #include <libslic3r/SLA/Pad.hpp>
 #include <libslic3r/MTUtils.hpp>
@@ -103,6 +104,8 @@ class SupportTreeBuilder {
     std::vector<Anchor>     m_anchors;
 
     JobController m_ctl;
+
+    SupportShapes m_shapes;
     
     using Mutex = tbb::spin_mutex;
     
@@ -130,6 +133,16 @@ public:
     SupportTreeBuilder& operator=(const SupportTreeBuilder &o);
 
     const JobController &ctl() const { return m_ctl; }
+
+    // Shapes used when the parts are turned into a mesh.
+    void set_shapes(const SupportShapes &shapes)
+    {
+        std::lock_guard<Mutex> lk(m_mutex);
+        m_shapes = shapes;
+        m_meshcache_valid = false;
+    }
+
+    const SupportShapes &shapes() const { return m_shapes; }
 
     template<class...Args> Head& add_head(unsigned id, Args&&... args)
     {
@@ -271,6 +284,7 @@ public:
     inline const std::vector<Head>   &heads() const { return m_heads; }
     inline const std::vector<Bridge> &bridges() const { return m_bridges; }
     inline const std::vector<Bridge> &crossbridges() const { return m_crossbridges; }
+    inline const std::vector<Pedestal> &pedestals() const { return m_pedestals; }
     
     template<class T> inline IntegerOnly<T, const Pillar&> pillar(T id) const
     {

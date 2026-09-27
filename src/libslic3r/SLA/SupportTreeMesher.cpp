@@ -165,6 +165,24 @@ indexed_triangle_set pinhead(double r_pin,
     return mesh;
 }
 
+indexed_triangle_set pinhead_cone(double r_pin,
+                                  double r_back,
+                                  double length,
+                                  size_t steps)
+{
+    assert(steps > 0);
+    assert(length >= 0.);
+    assert(r_back > 0.);
+    assert(r_pin > 0.);
+
+    // The back ball joins the pillar, a cone runs from its centre to the
+    // tip. The tip lies where the front of the ball-tipped pinhead would be.
+    indexed_triangle_set mesh = sphere(r_back, make_portion(0, PI), 2 * PI / steps);
+    its_merge(mesh, halfcone(r_back + 2 * r_pin + length, r_back, r_pin, Vec3d::Zero(), steps));
+
+    return mesh;
+}
+
 indexed_triangle_set halfcone(double       baseheight,
                               double       r_bottom,
                               double       r_top,
@@ -217,9 +235,33 @@ indexed_triangle_set halfcone(double       baseheight,
     return base;
 }
 
+indexed_triangle_set square_frustum(double       baseheight,
+                                    double       r_bottom,
+                                    double       r_top,
+                                    const Vec3d &pos)
+{
+    // A four-sided halfcone has its corners on the axes. Scale the corners
+    // out by sqrt(2) and turn it by 45 degrees so the sides run along X and Y.
+    indexed_triangle_set mesh = halfcone(baseheight, std::sqrt(2.) * r_bottom,
+                                         std::sqrt(2.) * r_top, Vec3d::Zero(), 4);
+
+    const Eigen::AngleAxisf rot(float(PI / 4.), Vec3f::UnitZ());
+    const Vec3f p = pos.cast<float>();
+    for (auto &v : mesh.vertices) v = rot * v + p;
+
+    return mesh;
+}
+
 indexed_triangle_set get_mesh(const Head &h, size_t steps)
 {
-    indexed_triangle_set mesh = pinhead(h.r_pin_mm, h.r_back_mm, h.width_mm, steps);
+    return get_mesh(h, steps, SupportShapes{});
+}
+
+indexed_triangle_set get_mesh(const Head &h, size_t steps, const SupportShapes &shapes)
+{
+    indexed_triangle_set mesh = shapes.head == HeadShape::cone ?
+                                    pinhead_cone(h.r_pin_mm, h.r_back_mm, h.width_mm, steps) :
+                                    pinhead(h.r_pin_mm, h.r_back_mm, h.width_mm, steps);
 
     for (auto& p : mesh.vertices) p.z() -= (h.fullwidth() - h.r_back_mm);
 
