@@ -34,6 +34,9 @@ struct ThumbnailsParams
 	bool 			parts_only;
 	bool 			show_bed;
 	bool 			transparent_background;
+	// Resin prints: show what gets printed (supports, pad, hollowed and
+	// drilled object) instead of the plain model.
+	bool 			sla_as_printed = false;
 };
 
 typedef std::function<ThumbnailsList(const ThumbnailsParams&)> ThumbnailsGeneratorCallback;

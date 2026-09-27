@@ -210,7 +210,7 @@ void BackgroundSlicingProcess::process_sla()
 				for (const auto& [format, size] : thumbnails_list)
 					sizes.emplace_back(size);
 			}
-			ThumbnailsList thumbnails = this->render_thumbnails(ThumbnailsParams{sizes, true, true, true, true });
+			ThumbnailsList thumbnails = this->render_thumbnails(ThumbnailsParams{sizes, true, true, true, true, true });
 			m_sla_print->export_print(export_path, thumbnails);
 
             m_print->set_status(100, GUI::format(_L("Masked SLA file exported to %1%"), export_path));
@@ -781,7 +781,7 @@ void BackgroundSlicingProcess::prepare_upload(PrintHostJob &upload_job)
 			for (const auto& [format, size] : thumbnails_list)
 				sizes.emplace_back(size);
 		}
-		ThumbnailsList thumbnails = this->render_thumbnails(ThumbnailsParams{ sizes, true, true, true, true });
+		ThumbnailsList thumbnails = this->render_thumbnails(ThumbnailsParams{ sizes, true, true, true, true, true });
         m_sla_print->export_print(source_path.string(),thumbnails, upload_job.upload_data.upload_path.filename().string());
     }
 

@@ -4903,10 +4903,29 @@ void GLCanvas3D::_render_thumbnail_internal(ThumbnailData& thumbnail_data, const
         return ret;
     };
 
+    // For resin prints as printed: object instances whose hollowed and drilled
+    // mesh is in the scene, which then replaces the plain model.
+    std::set<std::pair<int, int>> processed_instances;
+    if (thumbnail_params.sla_as_printed)
+        for (const GLVolume* vol : volumes.volumes)
+            if (vol->volume_idx() == -int(slaposDrillHoles))
+                processed_instances.insert({vol->object_idx(), vol->instance_idx()});
+
+    auto wanted = [&thumbnail_params, &processed_instances](const GLVolume& v) {
+        if (v.is_modifier || v.is_wipe_tower())
+            return false;
+        if (thumbnail_params.sla_as_printed) {
+            if (v.volume_idx() >= 0)
+                return processed_instances.count({v.object_idx(), v.instance_idx()}) == 0;
+            return v.is_sla_support() || v.is_sla_pad() || v.volume_idx() == -int(slaposDrillHoles);
+        }
+        return !thumbnail_params.parts_only || v.composite_id.volume_id >= 0;
+    };
+
     GLVolumePtrs visible_volumes;
 
     for (GLVolume* vol : volumes.volumes) {
-        if (!vol->is_modifier && !vol->is_wipe_tower() && (!thumbnail_params.parts_only || vol->composite_id.volume_id >= 0)) {
+        if (wanted(*vol)) {
             if (!thumbnail_params.printable_only || is_visible(*vol)) {
                 if (s_multiple_beds.is_glvolume_on_thumbnail_bed(wxGetApp().model(), vol->composite_id.object_id, vol->composite_id.instance_id))
                     visible_volumes.emplace_back(vol);
