@@ -10715,7 +10715,7 @@ msgstr ""
 
 #: src/slic3r/GUI/Gizmos/GLGizmoCut.cpp:225
 msgid "Square"
-msgstr ""
+msgstr "Quadrado"
 
 #: src/slic3r/GUI/Gizmos/GLGizmoCut.cpp:225
 msgid "Hexagon"
@@ -18306,7 +18306,7 @@ msgstr ""
 #: src/slic3r/GUI/PresetComboBoxes.cpp:762
 #: src/slic3r/GUI/PresetComboBoxes.cpp:1023
 msgid "printing"
-msgstr ""
+msgstr "imprimindo"
 
 #: src/slic3r/GUI/PresetComboBoxes.cpp:872
 #: src/slic3r/GUI/PresetComboBoxes.cpp:921
@@ -30205,3 +30205,199 @@ msgstr "erro do zlib %d"
 #: ../src/richtext/richtextbulletspage.cpp:288
 msgid "~"
 msgstr "~"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Tip shape"
+msgstr "Formato da ponta"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Shape of the support tip where it touches the model. Ball is PrusaSlicer's rounded tip. Cone ends in a flat point as wide as the pinhead front diameter, like CHITUBOX, and leaves smaller marks."
+msgstr "Formato da ponta do suporte onde ela toca o modelo. Bola é a ponta arredondada do PrusaSlicer. Cone termina numa ponta plana da largura do diâmetro frontal da cabeça, como no CHITUBOX, e deixa marcas menores."
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Ball"
+msgstr "Bola"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Cone (sharp tip)"
+msgstr "Cone (ponta fina)"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Pillar shape"
+msgstr "Formato do pilar"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Cross-section of the support pillars. A square pillar is as wide as the pillar diameter, so it is never thinner than a round one."
+msgstr "Seção dos pilares de suporte. Um pilar quadrado tem a largura do diâmetro do pilar, então nunca fica mais fino que um redondo."
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Round"
+msgstr "Redondo"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Base shape"
+msgstr "Formato da base"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Shape of the pillar base. Cone narrows from the base diameter to the pillar. Cylinder keeps the full base diameter up to the base height and holds better on the build plate."
+msgstr "Formato da base do pilar. Cone afina do diâmetro da base até o pilar. Cilindro mantém o diâmetro inteiro da base até a altura da base e segura melhor na plataforma."
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Cone"
+msgstr "Cone"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Pad style"
+msgstr "Estilo do bloco"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Solid is a full plate with sloped edges, like CHITUBOX's skate raft. Cross grid cuts square openings into the plate, keeping it solid under every support, which uses less resin and reduces suction on the vat film."
+msgstr "Sólido é uma placa inteira com bordas inclinadas, como o skate do CHITUBOX. Grade corta aberturas quadradas na placa, mantendo-a sólida sob cada suporte, o que gasta menos resina e reduz a sucção no filme da cuba."
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Solid (skate)"
+msgstr "Sólido (skate)"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Cross grid"
+msgstr "Grade"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Grid opening"
+msgstr "Abertura da grade"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Size of the square openings of a cross grid pad."
+msgstr "Tamanho das aberturas quadradas de um bloco em grade."
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Grid bar width"
+msgstr "Largura da barra da grade"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Width of the bars between the openings of a cross grid pad."
+msgstr "Largura das barras entre as aberturas de um bloco em grade."
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Support size"
+msgstr "Tamanho do suporte"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Sets the tip, pillar and base sizes of the supports at once. Custom means the values were edited in Print Settings."
+msgstr "Define de uma vez o tamanho da ponta, do pilar e da base dos suportes. Customizado significa que os valores foram editados nas configurações de impressão."
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Heavy"
+msgstr "Pesado"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Support settings of this object"
+msgstr "Ajuste dos suportes desta peça"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Tip"
+msgstr "Ponta"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Body"
+msgstr "Corpo"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Base"
+msgstr "Base"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Raft (skate)"
+msgstr "Skate"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Penetration"
+msgstr "Penetração"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Thickness"
+msgstr "Espessura"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Bracing"
+msgstr "Travamento"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Bracing distance"
+msgstr "Distância de travamento"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Save to print profile"
+msgstr "Salvar no perfil de impressão"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "The resin profile overrides some of these values (Material Overrides)."
+msgstr "O perfil da resina substitui alguns destes valores (Substituições do material)."
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Save support settings to print profile"
+msgstr "Salvar ajuste dos suportes no perfil de impressão"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "From settings"
+msgstr "Das configurações"
+
+#: SBM fork (CHITUBOX-style supports)
+msgid "Change support size"
+msgstr "Mudar tamanho do suporte"
+
+#: SBM fork (HALOT WiFi)
+msgid "ready"
+msgstr "pronta"
+
+#: SBM fork (HALOT WiFi)
+msgid "paused"
+msgstr "pausada"
+
+#: SBM fork (HALOT WiFi)
+msgid "print finished"
+msgstr "impressão concluída"
+
+#: SBM fork (HALOT WiFi)
+msgid "The printer did not answer in time. Check that it is on and connected to the WiFi."
+msgstr "A impressora não respondeu a tempo. Confira se ela está ligada e conectada ao WiFi."
+
+#: SBM fork (HALOT WiFi)
+msgid "The printer refused the password. Use the password set on the printer in Settings > Print Settings > HALOT BOX > Password (123456 if you never changed it)."
+msgstr "A impressora recusou a senha. Use a senha definida na impressora em Configurações > Configurações de impressão > HALOT BOX > Senha (123456 se você nunca mudou)."
+
+#: SBM fork (HALOT WiFi)
+msgid "The printer is printing. Wait until it finishes, or upload without printing."
+msgstr "A impressora está imprimindo. Espere terminar, ou envie sem imprimir."
+
+#: SBM fork (HALOT WiFi)
+msgid "The printer refused the file (%1%)."
+msgstr "A impressora recusou o arquivo (%1%)."
+
+#: SBM fork (HALOT WiFi)
+msgid "Could not read the file to send: %1%"
+msgstr "Não foi possível ler o arquivo a enviar: %1%"
+
+#: SBM fork (HALOT WiFi)
+msgid "Connection to the printer failed: %1%"
+msgstr "A conexão com a impressora falhou: %1%"
+
+#: SBM fork (HALOT WiFi)
+msgid "Connection to the HALOT printer works correctly (status: %1%)."
+msgstr "A conexão com a impressora HALOT funciona corretamente (status: %1%)."
+
+#: SBM fork (HALOT WiFi)
+msgid "Could not connect to the HALOT printer"
+msgstr "Não foi possível conectar à impressora HALOT"
+
+#: SBM fork (HALOT WiFi)
+msgid "No HALOT printer answered. Check that it is on and connected to the same WiFi network as this computer."
+msgstr "Nenhuma impressora HALOT respondeu. Confira se ela está ligada e conectada à mesma rede WiFi deste computador."
+
+#: SBM fork (HALOT WiFi)
+msgid "HALOT printers on the network"
+msgstr "Impressoras HALOT na rede"
+
+#: SBM fork (HALOT WiFi)
+msgid "Choose the printer:"
+msgstr "Escolha a impressora:"
