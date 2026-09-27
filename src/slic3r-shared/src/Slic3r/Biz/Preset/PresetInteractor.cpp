@@ -1906,12 +1906,14 @@ PresetInteractor::SheetItems PresetInteractor::get_sheet_items(
 {
     SheetItems result;
 
+    // Sheets have no technology: the loader keeps all of them with the FFF
+    // definitions, also for SLA printers.
     HwConfigEvaluator config_eval;
     HwSheetConfigIterator iterator = config_eval.iterate_sheets(
         hw_config,
         m_workbench.preset_bundle()
             .vendor_bundles.at(hw_config.vendor_id)
-            .vendor_data.defs.at(hw_config.technology)
+            .vendor_data.defs.at(Domain::PrinterTechnology::FFF)
             .sheets
     );
 
