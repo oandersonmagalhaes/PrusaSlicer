@@ -174,3 +174,36 @@ TEST_CASE("Missing UVtools fails before writing anything", "[uvtools]") {
     REQUIRE(msg.find("UVTOOLS_CMD") != std::string::npos);
     REQUIRE(!fs::exists(out));
 }
+
+#include "libslic3r/PresetBundle.hpp"
+
+// The name for the archive of `format`, from `name_format`.
+static std::string output_name(const char *format, const std::string &name_format)
+{
+    SLAPrint print;
+    SLAFullPrintConfig fullcfg;
+    fullcfg.printer_technology.setInt(ptSLA);
+    fullcfg.set("sla_archive_format", format);
+    fullcfg.set("output_filename_format", name_format);
+    DynamicPrintConfig cfg;
+    cfg.apply(fullcfg);
+    Model m = FileReader::load_model(TEST_DATA_DIR PATH_SEPARATOR + std::string("20mm_cube.obj"));
+    print.apply(m, cfg);
+    return print.output_filename("Lacos");
+}
+
+TEST_CASE("File names get the extension of the archive format", "[uvtools]") {
+    // Old presets and projects name every SLA file "[input_filename_base].sl1".
+    CHECK(output_name("CXDLPV4", "[input_filename_base].sl1") == "Lacos.cxdlpv4");
+    CHECK(output_name("GOO", "[input_filename_base].sl1") == "Lacos.goo");
+    CHECK(output_name("SL1", "[input_filename_base].sl1") == "Lacos.sl1");
+    // A name the user chose keeps its extension.
+    CHECK(output_name("CXDLPV4", "[input_filename_base].zip") == "Lacos.zip");
+}
+
+TEST_CASE("The default SLA print preset names files after the archive format", "[uvtools]") {
+    PresetBundle bundle;
+    const std::string name_format = bundle.sla_prints.default_preset().config.opt_string("output_filename_format");
+    CHECK(output_name("CXDLPV4", name_format) == "Lacos.cxdlpv4");
+    CHECK(output_name("SL1", name_format) == "Lacos.sl1");
+}

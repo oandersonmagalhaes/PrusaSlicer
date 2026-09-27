@@ -22,6 +22,7 @@
 
 #include <tbb/parallel_for.h>
 #include <boost/filesystem/path.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/log/trivial.hpp>
 
 #include "libslic3r/MultipleBeds.hpp"
@@ -656,7 +657,14 @@ std::string SLAPrint::output_filename(const std::string &filename_base) const
     config.set_key_value("default_output_extension",
                          new ConfigOptionString(default_ext));
 
-    return this->PrintBase::output_filename(m_print_config.output_filename_format.value, default_ext, filename_base, &config);
+    boost::filesystem::path name = this->PrintBase::output_filename(m_print_config.output_filename_format.value, default_ext, filename_base, &config);
+
+    // Presets and projects from before other archive formats name every file
+    // "[input_filename_base].sl1": give such names the format's extension.
+    if (boost::iequals(name.extension().string(), ".sl1") && !boost::iequals(default_ext, ".sl1"))
+        name.replace_extension(default_ext);
+
+    return name.string();
 }
 
 std::string SLAPrint::validate(std::vector<std::string>*) const
