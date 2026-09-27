@@ -1,0 +1,26 @@
+id: Generic Resin
+kind: sla_material
+values:
+  material_vendor: Generic
+  material_type: Tough
+variants:
+- condition: printer.model == "HALOT-R6"
+  id: generic-resin-halot-r6
+  variants:
+  - condition: print.layer_height == 0.05
+    name: Generic Resin @HalotR6 0.05
+    id: generic-resin-halot-r6-0.05
+    values:
+      initial_layer_height: 0.05
+      exposure_time: 2.5
+      initial_exposure_time: 30
+- condition: printer.model == "SATURN3-ULTRA"
+  id: generic-resin-saturn3-ultra
+  variants:
+  - condition: print.layer_height == 0.05
+    name: Generic Resin @Saturn3Ultra 0.05
+    id: generic-resin-saturn3-ultra-0.05
+    values:
+      initial_layer_height: 0.05
+      exposure_time: 2.5
+      initial_exposure_time: 25

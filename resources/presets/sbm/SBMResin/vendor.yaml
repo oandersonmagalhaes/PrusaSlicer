@@ -1,0 +1,64 @@
+kind: vendor
+id: SBMResin
+name: SBM Resin
+version: 1.0.0
+features:
+  printer: {}
+  tool: {}
+printer_families:
+  - label: "Creality HALOT"
+    base_model: HALOT
+    printer_configs_order:
+      - halot-r6
+  - label: "Elegoo Saturn"
+    base_model: SATURN
+    printer_configs_order:
+      - saturn3-ultra
+---
+kind: printer
+technology: SLA
+id: halot-r6
+name: Creality HALOT-R6
+model:
+  base_model: HALOT
+  model: HALOT-R6
+tool_count: 1
+visual:
+  thumbnail: HALOTR6_thumbnail.svg
+---
+kind: printer
+technology: SLA
+id: saturn3-ultra
+name: Elegoo Saturn 3 Ultra
+model:
+  base_model: SATURN
+  model: SATURN3-ULTRA
+tool_count: 1
+visual:
+  thumbnail: SATURN3ULTRA_thumbnail.svg
+---
+kind: tool
+technology: SLA
+name: SLA default
+id: sla_default
+---
+kind: sheet
+name: SLA default
+id: sla_default
+type: ''
+---
+kind: printer_config
+id: halot-r6
+printer: halot-r6
+name: Creality HALOT-R6
+tools:
+- tool: sla_default
+sheet: sla_default
+---
+kind: printer_config
+id: saturn3-ultra
+printer: saturn3-ultra
+name: Elegoo Saturn 3 Ultra
+tools:
+- tool: sla_default
+sheet: sla_default

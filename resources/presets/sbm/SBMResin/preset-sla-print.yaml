@@ -1,0 +1,19 @@
+id: sbm-0.05-normal
+kind: sla_print
+values:
+  layer_height: 0.05
+  faded_layers: 10
+  supports_enable: 1
+  pad_enable: 1
+  support_object_elevation: 5
+variants:
+- condition: printer.model == "HALOT-R6"
+  name: 0.05 Normal @SBM
+  id: sbm-0.05-normal-halot-r6
+  values:
+    output_filename_format: '[input_filename_base].cxdlpv4'
+- condition: printer.model == "SATURN3-ULTRA"
+  name: 0.05 Normal @SBM
+  id: sbm-0.05-normal-saturn3-ultra
+  values:
+    output_filename_format: '[input_filename_base].goo'

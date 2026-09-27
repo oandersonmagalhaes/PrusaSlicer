@@ -1651,6 +1651,8 @@ if(SLIC3R_BUILD_TESTS)
     set(TEST_DATA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test/data)
     file(TO_NATIVE_PATH "${TEST_DATA_DIR}" TEST_DATA_DIR)
     target_compile_definitions(slic3r-shared-tests PRIVATE TEST_DATA_DIR=R"\(${TEST_DATA_DIR}\)")
+    file(TO_NATIVE_PATH "${SLIC3R_RESOURCES_DIR}" TEST_RESOURCES_DIR)
+    target_compile_definitions(slic3r-shared-tests PRIVATE RESOURCES_DIR=R"\(${TEST_RESOURCES_DIR}\)")
 
     add_test(NAME slic3r-shared-tests
             COMMAND slic3r-shared-tests ${CATCH_ALL_ARGS}

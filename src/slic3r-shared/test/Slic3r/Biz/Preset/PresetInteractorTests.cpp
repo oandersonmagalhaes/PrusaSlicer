@@ -342,3 +342,83 @@ TEST_CASE_METHOD(LoadedProjectInteractorFixture, "Preset Interactor Tests", "[Pr
     }
 }
 
+// The presets shipped with the app.
+struct ShippedPresetsFixture : BaseProjectInteractorFixture
+{
+    const Slic3r::Biz::Preset::IO::BundlePaths bundle_paths{shipped_bundle_paths()};
+
+    static Slic3r::Biz::Preset::IO::BundlePaths shipped_bundle_paths()
+    {
+        auto paths{Slic3r::Biz::Preset::IO::BundlePaths::make_test_runtime(Tests::get_datadir())};
+        paths.app_bundle_path = (fs::path{RESOURCES_DIR} / "presets").string();
+        return paths;
+    }
+
+    ShippedPresetsFixture()
+    {
+        auto& preset_interactor = project_interactor.preset_interactor();
+        preset_interactor.set_use_hw_config_short_name(false);
+        preset_interactor.load_preset_bundle(bundle_paths);
+    }
+
+    ~ShippedPresetsFixture() override
+    {
+        fs::remove_all(bundle_paths.user_bundle_path);
+    }
+};
+
+TEST_CASE_METHOD(ShippedPresetsFixture, "The SBM resin printers ship with print and resin presets", "[PresetInteractor][preset][sbm]")
+{
+    project_interactor.new_project();
+    auto& preset_interactor = project_interactor.preset_interactor();
+
+    struct Expected
+    {
+        std::string printer;
+        std::string archive_format;
+        int pixels_x;
+        int pixels_y;
+        double width;
+        double height;
+        bool mirror_x;
+        std::string material;
+        double initial_exposure_time;
+    };
+    for (const Expected& e : {
+             Expected{"Creality HALOT-R6", "CXDLPV4", 1620, 2560, 82.62, 130.56, false, "Generic Resin @HalotR6 0.05", 30.},
+             Expected{"Elegoo Saturn 3 Ultra", "GOO", 11520, 5120, 218.88, 122.88, true, "Generic Resin @Saturn3Ultra 0.05", 25.},
+         }) {
+        INFO(e.printer);
+        const auto* printer = find_if<Slic3r::Biz::Preset::PresetItem>(
+            preset_interactor.printer_presets().items(),
+            [&](const auto& item) { return item.hw_printer_config_name == e.printer; }
+        );
+        REQUIRE(printer != nullptr);
+        preset_interactor.select_printer_preset(printer->hw_printer_config_id, printer->id);
+
+        const Slic3r::Domain::Preset::SelectedPreset& selected = preset_interactor.selected_printer_preset();
+        REQUIRE(selected.technology() == Slic3r::Domain::PrinterTechnology::SLA);
+
+        // The printer chooser adds a printer with the sheet it lists.
+        const auto sheets{preset_interactor.get_sheet_items(selected.hw_config)};
+        REQUIRE(sheets.sheet_defs.size() == 1);
+        CHECK(sheets.sheet_defs.at(sheets.selected_sheet).id == "sla_default");
+
+        const Slic3r::Domain::ConfigItems& values = selected.printer.config_box().items;
+        CHECK(values.find("sla_archive_format")->get<std::string>() == e.archive_format);
+        CHECK(values.find("display_pixels_x")->get<int>() == e.pixels_x);
+        CHECK(values.find("display_pixels_y")->get<int>() == e.pixels_y);
+        CHECK(values.find("display_width")->get<double>() == e.width);
+        CHECK(values.find("display_height")->get<double>() == e.height);
+        CHECK(values.find("display_mirror_x")->get<bool>() == e.mirror_x);
+        // UVtools reads the printer settings it can't get from PrusaSlicer from the notes.
+        CHECK(values.find("printer_notes")->get<std::string>().find("\nSTART_CUSTOM_VALUES\n") != std::string::npos);
+
+        CHECK(selected.print.name == "0.05 Normal @SBM");
+        CHECK(selected.print.config_box().items.find("layer_height")->get<double>() == 0.05);
+
+        REQUIRE(selected.materials.size() == 1);
+        CHECK(selected.materials.front().name == e.material);
+        CHECK(selected.materials.front().config_box().items.find("initial_exposure_time")->get<double>() == e.initial_exposure_time);
+    }
+}
