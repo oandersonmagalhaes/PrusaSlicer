@@ -1,4 +1,5 @@
 #include "DefaultSupportTree.hpp"
+#include "SupportSizes.hpp"
 
 #include "Slic3r/Biz/Algorithms/Optimize/NLoptOptimizer.hpp"
 #include <libslic3r/SLA/Clustering.hpp>
@@ -57,6 +58,8 @@ DefaultSupportTree::DefaultSupportTree(SupportTreeBuilder &   builder,
 bool DefaultSupportTree::execute(SupportTreeBuilder    &builder,
                                 const SupportableMesh &sm)
 {
+    builder.set_shapes(sm.cfg.shapes);
+
     if(sm.pts->empty()) return false;
 
     DefaultSupportTree alg(builder, sm);
@@ -363,6 +366,9 @@ bool DefaultSupportTree::create_ground_pillar(const Junction &hjp,
                                              const Vec3d &sourcedir,
                                              long         head_id)
 {
+    // A support point with its own size has its own full pillar radius.
+    const double full_r = head_id >= 0 ? head_dims(m_sm.cfg, m_sm.pts->at(size_t(head_id))).r_back : -1.;
+
     auto [ret, pillar_id] = sla::create_ground_pillar(suptree_ex_policy,
                                                       m_builder,
                                                       m_sm,
@@ -370,7 +376,8 @@ bool DefaultSupportTree::create_ground_pillar(const Junction &hjp,
                                                       sourcedir,
                                                       hjp.r,
                                                       hjp.r,
-                                                      head_id);
+                                                      head_id,
+                                                      full_r);
 
     if (pillar_id >= 0) // Save the pillar endpoint in the spatial index
         m_pillar_index.guarded_insert(m_builder.pillar(pillar_id).endpt,
@@ -413,7 +420,7 @@ void DefaultSupportTree::add_pinheads()
             NaNd,
             sp.head_front_radius,
             0.,
-            m_sm.cfg.head_penetration_mm,
+            head_dims(m_sm.cfg, sp).penetration,
             Vec3d::Zero(),         // dir
             sp.pos.cast<double>()  // displacement
             );
@@ -443,15 +450,18 @@ void DefaultSupportTree::add_pinheads()
         // save the head (pinpoint) position
         Vec3d hp = m_points.row(fidx);
 
-        double lmin = m_sm.cfg.head_width_mm, lmax = lmin;
+        // The point's own size, or the settings when it has none.
+        const HeadDims dims = head_dims(m_sm.cfg, m_sm.pts->at(fidx));
 
-        if (back_r < m_sm.cfg.head_back_radius_mm) {
-            lmin = 0., lmax = m_sm.cfg.head_penetration_mm;
+        double lmin = dims.width, lmax = lmin;
+
+        if (back_r < dims.r_back) {
+            lmin = 0., lmax = dims.penetration;
         }
 
         // The distance needed for a pinhead to not collide with model.
         double w = lmin + 2 * back_r + 2 * m_sm.cfg.head_front_radius_mm -
-                   m_sm.cfg.head_penetration_mm;
+                   dims.penetration;
 
         double pin_r = double(m_sm.pts->at(fidx).head_front_radius);
 
@@ -509,7 +519,8 @@ void DefaultSupportTree::add_pinheads()
     execution::for_each(
         suptree_ex_policy, size_t(0), filtered_indices.size(),
         [this, &filterfn, &filtered_indices](size_t i) {
-            filterfn(filtered_indices[i], i, m_sm.cfg.head_back_radius_mm);
+            filterfn(filtered_indices[i], i,
+                     head_dims(m_sm.cfg, m_sm.pts->at(filtered_indices[i])).r_back);
         },
         execution::max_concurrency(suptree_ex_policy));
 
@@ -650,7 +661,8 @@ bool DefaultSupportTree::connect_to_ground(Head &head)
                                                      {head.junction_point(),
                                                       head.r_back_mm},
                                                      head.r_back_mm,
-                                                     head.dir);
+                                                     head.dir,
+                                                     head_dims(m_sm.cfg, m_sm.pts->at(size_t(head.id))).r_back);
 
     if (pillar_id >= 0) {
         // Save the pillar endpoint in the spatial index
@@ -686,7 +698,7 @@ bool DefaultSupportTree::connect_to_model_body(Head &head)
     h = std::min(hit.distance() - head.r_back_mm, h);
 
     // If this is a mini pillar dont bother with the tail width, can be 0.
-    if (head.r_back_mm < m_sm.cfg.head_back_radius_mm) h = std::max(h, 0.);
+    if (head.r_back_mm < head_dims(m_sm.cfg, m_sm.pts->at(size_t(head.id))).r_back) h = std::max(h, 0.);
     else if (h <= 0.) return false;
 
     Vec3d endp{hjp.x(), hjp.y(), hjp.z() - hit.distance() + h};

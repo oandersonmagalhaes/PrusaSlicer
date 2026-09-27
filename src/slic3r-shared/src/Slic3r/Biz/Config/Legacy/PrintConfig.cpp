@@ -219,6 +219,30 @@ static const t_config_enum_values s_keys_map_SLAPillarConnectionMode = {
 };
 CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(SLAPillarConnectionMode)
 
+static const t_config_enum_values s_keys_map_SLAHeadShape = {
+    {"ball",            int(SLAHeadShape::ball)},
+    {"cone",            int(SLAHeadShape::cone)}
+};
+CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(SLAHeadShape)
+
+static const t_config_enum_values s_keys_map_SLAPillarShape = {
+    {"round",           int(SLAPillarShape::round)},
+    {"square",          int(SLAPillarShape::square)}
+};
+CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(SLAPillarShape)
+
+static const t_config_enum_values s_keys_map_SLABaseShape = {
+    {"cone",            int(SLABaseShape::cone)},
+    {"cylinder",        int(SLABaseShape::cylinder)}
+};
+CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(SLABaseShape)
+
+static const t_config_enum_values s_keys_map_SLAPadShape = {
+    {"solid",           int(SLAPadShape::solid)},
+    {"grid",            int(SLAPadShape::grid)}
+};
+CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(SLAPadShape)
+
 static const t_config_enum_values s_keys_map_SLAMaterialSpeed = {
     {"slow",            slamsSlow},
     {"fast",            slamsFast},
@@ -4256,6 +4280,42 @@ void PrintConfigDef::init_sla_support_params(const std::string &prefix)
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionEnum(SLAPillarConnectionMode::dynamic));
 
+    def = this->add(prefix + "support_head_shape", coEnum);
+    def->label = L("Tip shape");
+    def->category = L("Supports");
+    def->tooltip = L("Shape of the support tip where it touches the model. "
+                     "Ball is PrusaSlicer's rounded tip. Cone ends in a flat point "
+                     "as wide as the pinhead front diameter, like CHITUBOX, and "
+                     "leaves smaller marks.");
+    def->set_enum<SLAHeadShape>(
+        ConfigOptionEnum<SLAHeadShape>::get_enum_names(),
+        { L("Ball"), L("Cone (sharp tip)") });
+    def->mode = comSimple;
+    def->set_default_value(new ConfigOptionEnum(SLAHeadShape::ball));
+
+    def = this->add(prefix + "support_pillar_shape", coEnum);
+    def->label = L("Pillar shape");
+    def->category = L("Supports");
+    def->tooltip = L("Cross-section of the support pillars. A square pillar is as wide "
+                     "as the pillar diameter, so it is never thinner than a round one.");
+    def->set_enum<SLAPillarShape>(
+        ConfigOptionEnum<SLAPillarShape>::get_enum_names(),
+        { L("Round"), L("Square") });
+    def->mode = comSimple;
+    def->set_default_value(new ConfigOptionEnum(SLAPillarShape::round));
+
+    def = this->add(prefix + "support_base_shape", coEnum);
+    def->label = L("Base shape");
+    def->category = L("Supports");
+    def->tooltip = L("Shape of the pillar base. Cone narrows from the base diameter "
+                     "to the pillar. Cylinder keeps the full base diameter up to the "
+                     "base height and holds better on the build plate.");
+    def->set_enum<SLABaseShape>(
+        ConfigOptionEnum<SLABaseShape>::get_enum_names(),
+        { L("Cone"), L("Cylinder") });
+    def->mode = comSimple;
+    def->set_default_value(new ConfigOptionEnum(SLABaseShape::cone));
+
     def = this->add(prefix + "support_buildplate_only", coBool);
     def->label = L("Support on build plate only");
     def->category = L("Supports");
@@ -4776,7 +4836,7 @@ void PrintConfigDef::init_sla_params()
     def->sidetext = L("mm");
     def->min = 0;
     def->max = 30;
-    def->mode = comAdvanced;
+    def->mode = comSimple;
     def->set_default_value(new ConfigOptionFloat(1.6));
 
     def = this->add("pad_max_merge_distance", coFloat);
@@ -4811,6 +4871,39 @@ void PrintConfigDef::init_sla_params()
     def->max = 90;
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionFloat(90.0));
+
+    def = this->add("pad_shape", coEnum);
+    def->label = L("Pad style");
+    def->category = L("Pad");
+    def->tooltip = L("Solid is a full plate with sloped edges, like CHITUBOX's skate raft. "
+                     "Cross grid cuts square openings into the plate, keeping it solid "
+                     "under every support, which uses less resin and reduces suction "
+                     "on the vat film.");
+    def->set_enum<SLAPadShape>(
+        ConfigOptionEnum<SLAPadShape>::get_enum_names(),
+        { L("Solid (skate)"), L("Cross grid") });
+    def->mode = comSimple;
+    def->set_default_value(new ConfigOptionEnum(SLAPadShape::solid));
+
+    def = this->add("pad_grid_opening", coFloat);
+    def->label = L("Grid opening");
+    def->category = L("Pad");
+    def->tooltip = L("Size of the square openings of a cross grid pad.");
+    def->sidetext = L("mm");
+    def->min = 0.5;
+    def->max = 20;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(2.0));
+
+    def = this->add("pad_grid_bar_width", coFloat);
+    def->label = L("Grid bar width");
+    def->category = L("Pad");
+    def->tooltip = L("Width of the bars between the openings of a cross grid pad.");
+    def->sidetext = L("mm");
+    def->min = 0.5;
+    def->max = 20;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(2.0));
 
     def = this->add("pad_around_object", coBool);
     def->label = L("Pad around object");

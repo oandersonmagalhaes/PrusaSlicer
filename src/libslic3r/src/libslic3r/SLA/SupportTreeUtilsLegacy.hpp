@@ -93,6 +93,9 @@ std::optional<DiffBridge> search_widening_path(Ex                     policy,
 // 'pinhead_junctionpt' is the starting junction point which needs to be
 // routed down. sourcedir is the allowed direction of an optional bridge
 // between the jp junction and the final pillar.
+// full_radius is the normal pillar radius of the support; thinner pillars are
+// mini pillars without a base. It defaults to the configured pillar radius,
+// a support point with its own size passes its own.
 template<class Ex>
 std::pair<bool, long> create_ground_pillar(
     Ex                     policy,
@@ -102,8 +105,12 @@ std::pair<bool, long> create_ground_pillar(
     const Vec3d           &sourcedir,
     double                 radius,
     double                 end_radius,
-    long                   head_id = SupportTreeNode::ID_UNSET)
+    long                   head_id = SupportTreeNode::ID_UNSET,
+    double                 full_radius = -1.)
 {
+    if (full_radius <= 0.)
+        full_radius = sm.cfg.head_back_radius_mm;
+
     Vec3d  jp           = pinhead_junctionpt, endp = jp, dir = sourcedir;
     long   pillar_id    = SupportTreeNode::ID_UNSET;
     bool   can_add_base = false, non_head = false;
@@ -116,25 +123,25 @@ std::pair<bool, long> create_ground_pillar(
 
     auto to_floor = [&gndlvl](const Vec3d &p) { return Vec3d{p.x(), p.y(), gndlvl}; };
 
-    auto eval_limits = [&sm, &radius, &can_add_base, &gndlvl, &gap_dist, &jp_gnd]
+    auto eval_limits = [&sm, &radius, full_radius, &can_add_base, &gndlvl, &gap_dist, &jp_gnd]
         (bool base_en = true)
     {
-        can_add_base  = base_en && radius >= sm.cfg.head_back_radius_mm;
+        can_add_base  = base_en && radius >= full_radius;
         double base_r = can_add_base ? sm.cfg.base_radius_mm : 0.;
         gndlvl        = ground_level(sm);
         if (!can_add_base) gndlvl -= sm.pad_cfg.wall_thickness_mm;
-        jp_gnd   = gndlvl + (can_add_base ? 0. : sm.cfg.head_back_radius_mm);
+        jp_gnd   = gndlvl + (can_add_base ? 0. : full_radius);
         gap_dist = sm.cfg.pillar_base_safety_distance_mm + base_r + EPSILON;
     };
 
     eval_limits();
 
          // We are dealing with a mini pillar that's potentially too long
-    if (radius < sm.cfg.head_back_radius_mm && jp.z() - gndlvl > 20 * radius)
+    if (radius < full_radius && jp.z() - gndlvl > 20 * radius)
     {
         std::optional<DiffBridge> diffbr =
             search_widening_path(policy, sm, jp, dir, radius,
-                                 sm.cfg.head_back_radius_mm);
+                                 full_radius);
 
         if (diffbr && diffbr->endp.z() > jp_gnd) {
             auto &br = builder.add_diffbridge(*diffbr);
@@ -225,7 +232,8 @@ std::pair<bool, long> connect_to_ground(Ex                     policy,
                                         const SupportableMesh &sm,
                                         const Junction        &j,
                                         const Vec3d           &dir,
-                                        double                 end_r)
+                                        double                 end_r,
+                                        double                 full_radius = -1.)
 {
     auto   hjp = j.pos;
     double r   = j.r;
@@ -247,7 +255,8 @@ std::pair<bool, long> connect_to_ground(Ex                     policy,
         return {false, SupportTreeNode::ID_UNSET};
 
     Vec3d endp = hjp + d * dir;
-    auto ret = create_ground_pillar(policy, builder, sm, endp, dir, r, end_r);
+    auto ret = create_ground_pillar(policy, builder, sm, endp, dir, r, end_r,
+                                    SupportTreeNode::ID_UNSET, full_radius);
 
     if (ret.second >= 0) {
         builder.add_bridge(hjp, endp, r);
@@ -263,11 +272,12 @@ std::pair<bool, long> search_ground_route(Ex                     policy,
                                           const SupportableMesh &sm,
                                           const Junction        &j,
                                           double                 end_radius,
-                                          const Vec3d &init_dir = DOWN)
+                                          const Vec3d &init_dir = DOWN,
+                                          double       full_radius = -1.)
 {
     double downdst = j.pos.z() - ground_level(sm);
 
-    auto res = connect_to_ground(policy, builder, sm, j, init_dir, end_radius);
+    auto res = connect_to_ground(policy, builder, sm, j, init_dir, end_radius, full_radius);
     if (res.first)
         return res;
 
@@ -293,7 +303,7 @@ std::pair<bool, long> search_ground_route(Ex                     policy,
 
     Vec3d bridgedir = spheric_to_dir(oresult.optimum).normalized();
 
-    return connect_to_ground(policy, builder, sm, j, bridgedir, end_radius);
+    return connect_to_ground(policy, builder, sm, j, bridgedir, end_radius, full_radius);
 }
 
 }} // namespace Slic3r::sla

@@ -7,6 +7,7 @@
 #include <string>
 
 #include "Slic3r/Domain/ExPolygon.hpp"
+#include "libslic3r/SLA/SupportTreeStrategies.hpp"
 
 struct indexed_triangle_set;
 
@@ -34,6 +35,12 @@ struct PadConfig {
     double max_merge_dist_mm = 50;
     double wall_slope = std::atan(1.0);          // Universal constant for Pi/4
     double brim_size_mm = 1.6;
+
+    // Cross grid pads get square openings of grid_opening_mm, separated by
+    // bars of grid_bar_mm. Solid pads ignore both.
+    PadShape shape = PadShape::solid;
+    double grid_opening_mm = 2.;
+    double grid_bar_mm = 2.;
 
     struct EmbedObject {
         double object_gap_mm = 1.;

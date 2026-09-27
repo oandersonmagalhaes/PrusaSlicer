@@ -443,6 +443,66 @@ indexed_triangle_set create_inner_pad_geometry(const ExPolygons & skeleton,
     return ret;
 }
 
+// Cuts the square openings of a cross grid pad on a grid aligned to the
+// world axes. Openings keep a bar's width away from the pad edge and from
+// its holes, and never go under a support foot or the model, so everything
+// standing on the pad rests on solid material connected to the rest.
+ExPolygons add_grid_openings(const ExPolygons &parts,
+                             const ExPolygons &supp_bp,
+                             const ExPolygons &model_bp,
+                             const PadConfig  &cfg)
+{
+    const double bar = cfg.grid_bar_mm, opening = cfg.grid_opening_mm;
+    if (bar <= 0. || opening <= 0.)
+        return parts;
+
+    ExPolygons standing = supp_bp;
+    standing.insert(standing.end(), model_bp.begin(), model_bp.end());
+    const ExPolygons keep = offset_ex(standing, scaled<float>(bar / 2.));
+
+    const double pitch    = bar + opening;
+    const double cell_area = (1. - 1e-6) * sqr(double(scaled(opening)));
+
+    ExPolygons out;
+    for (const ExPolygon &part : parts) {
+        ExPolygons allowed = diff_ex(offset_ex(part, -scaled<float>(cfg.bottom_offset() + bar)), keep);
+        if (allowed.empty()) {
+            out.emplace_back(part);
+            continue;
+        }
+
+        const BoundingBox bb = get_extents(allowed);
+        const long i0 = long(std::floor(unscaled(bb.min.x()) / pitch));
+        const long j0 = long(std::floor(unscaled(bb.min.y()) / pitch));
+        const long i1 = long(std::ceil(unscaled(bb.max.x()) / pitch));
+        const long j1 = long(std::ceil(unscaled(bb.max.y()) / pitch));
+
+        Polygons cells;
+        for (long i = i0; i <= i1; ++i)
+            for (long j = j0; j <= j1; ++j) {
+                // Bars are centred on the grid lines, openings between them.
+                const coord_t x = scaled(i * pitch + bar / 2.), y = scaled(j * pitch + bar / 2.);
+                const coord_t d = scaled(opening);
+                cells.emplace_back(Points{{x, y}, {x + d, y}, {x + d, y + d}, {x, y + d}});
+            }
+
+        // Keep whole cells only. A clipped cell can wrap around a foot and
+        // cut it off from the rest of the pad. The cells don't overlap, so a
+        // piece with the full area and no hole is a whole cell.
+        ExPolygons openings = intersection_ex(cells, allowed);
+        openings.erase(std::remove_if(openings.begin(), openings.end(),
+                                      [cell_area](const ExPolygon &o) {
+                                          return !o.holes.empty() || o.area() < cell_area;
+                                      }),
+                       openings.end());
+
+        ExPolygons cut = diff_ex(part, openings);
+        out.insert(out.end(), cut.begin(), cut.end());
+    }
+
+    return out;
+}
+
 indexed_triangle_set create_pad_geometry(const PadSkeleton &skelet,
                                          const PadConfig &  cfg,
                                          ThrowOnCancel      thr)
@@ -455,6 +515,11 @@ indexed_triangle_set create_pad_geometry(const PadSkeleton &skelet,
 #endif
 
     PadConfig3D cfg3d(cfg);
+
+    // A cavity would cut the grid bars off from the pad rim.
+    if (cfg.shape == PadShape::grid)
+        cfg3d.wing_height = 0.;
+
     auto pg = create_outer_pad_geometry(skelet.outer, cfg3d, thr);
     its_merge(pg, create_inner_pad_geometry(skelet.inner, cfg3d, thr));
 
@@ -475,6 +540,9 @@ indexed_triangle_set create_pad_geometry(const ExPolygons &supp_bp,
             skelet = AroundPadSkeleton(supp_bp, model_bp, cfg, thr);
     } else
         skelet = BelowPadSkeleton(supp_bp, model_bp, cfg, thr);
+
+    if (cfg.shape == PadShape::grid)
+        skelet.outer = add_grid_openings(skelet.outer, supp_bp, model_bp, cfg);
 
     return create_pad_geometry(skelet, cfg, thr);
 }

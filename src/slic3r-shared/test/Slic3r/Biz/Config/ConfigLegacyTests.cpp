@@ -111,7 +111,11 @@ TEST_CASE("SLA INI roundtrip", "[config]")
     remove_lines_which_start_with(diff_lines, {"# generated", "printer_model", "material_vendor",
         "default_sla_print_profile", "default_sla_material_profile", "compatible_prints",
         "compatible_printers_condition_cummulative", "printer_notes", "printer_settings_id",
-        "printer_variant", "sla_material_settings_id", "sla_print_settings_id"});
+        "printer_variant", "sla_material_settings_id", "sla_print_settings_id",
+        // Support options of this fork, which files from upstream PrusaSlicer don't have.
+        "branchingsupport_base_shape", "branchingsupport_head_shape", "branchingsupport_pillar_shape",
+        "pad_grid_bar_width", "pad_grid_opening", "pad_shape",
+        "support_base_shape", "support_head_shape", "support_pillar_shape"});
     REQUIRE(diff_lines.empty());
 }
 
@@ -311,7 +315,17 @@ const std::map<std::string, std::vector<std::string>> sla_whitelist{
         "; printhost_apikey",
         "; printhost_cafile",
         "; sla_material_settings_id",
-        "; sla_print_settings_id"
+        "; sla_print_settings_id",
+        // Support options of this fork, which files from upstream PrusaSlicer don't have.
+        "; branchingsupport_base_shape",
+        "; branchingsupport_head_shape",
+        "; branchingsupport_pillar_shape",
+        "; pad_grid_bar_width",
+        "; pad_grid_opening",
+        "; pad_shape",
+        "; support_base_shape",
+        "; support_head_shape",
+        "; support_pillar_shape"
     }},
     {model_config_file, {
         "<metadata type=\"volume\" key=\"matrix\"",

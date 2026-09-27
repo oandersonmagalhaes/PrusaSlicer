@@ -352,6 +352,8 @@ set(SLIC3R_SOURCES
     src/libslic3r/SLA/SupportTreeBuilder.cpp
     src/libslic3r/SLA/SupportTreeBuilder.hpp
     src/libslic3r/SLA/SupportTreeMesher.cpp
+    src/libslic3r/SLA/SupportSizes.hpp
+    src/libslic3r/SLA/SupportSizes.cpp
     src/libslic3r/SLA/SupportTreeMesher.hpp
     src/libslic3r/SLA/SupportTreeUtils.hpp
     src/libslic3r/SLA/SupportTreeUtilsLegacy.hpp

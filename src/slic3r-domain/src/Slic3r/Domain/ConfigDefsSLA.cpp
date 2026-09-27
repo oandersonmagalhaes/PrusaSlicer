@@ -651,6 +651,49 @@ void sla_config_init_fn(ConfigDefinitions& defs)
     def->max = 90;
     def->init_fn = init_with(90.);
 
+    def = defs.add("pad_shape", typeid(EnumWrapper));
+    def->location = Print;
+    def->overrides_in = Locations{ Object };
+    def->label = L("Pad style");
+    def->option_group = ConfigItemDef::OptionGroup::Print_Pad_Pad;
+    def->category = ConfigItemDef::Category::Print_Pad;
+    def->gui_type = ConfigItemDef::GUIType::combobox;
+    def->tooltip = L("Solid is a full plate with sloped edges, like CHITUBOX's skate raft. "
+                     "Cross grid cuts square openings into the plate, keeping it solid "
+                     "under every support, which uses less resin and reduces suction "
+                     "on the vat film.");
+    def->init_fn = init_with(
+        sla::PadShape::solid,
+        {{int(sla::PadShape::solid), "solid", L("Solid (skate)")},
+         {int(sla::PadShape::grid), "grid", L("Cross grid")}}
+    );
+
+    def = defs.add("pad_grid_opening", typeid(double));
+    def->location = Print;
+    def->overrides_in = Locations{ Object };
+    def->label = L("Grid opening");
+    def->option_group = ConfigItemDef::OptionGroup::Print_Pad_Pad;
+    def->category = ConfigItemDef::Category::Print_Pad;
+    def->gui_type = ConfigItemDef::GUIType::textfield;
+    def->tooltip = L("Size of the square openings of a cross grid pad.");
+    def->units = {L("mm")};
+    def->min = 0.5;
+    def->max = 20;
+    def->init_fn = init_with(2.);
+
+    def = defs.add("pad_grid_bar_width", typeid(double));
+    def->location = Print;
+    def->overrides_in = Locations{ Object };
+    def->label = L("Grid bar width");
+    def->option_group = ConfigItemDef::OptionGroup::Print_Pad_Pad;
+    def->category = ConfigItemDef::Category::Print_Pad;
+    def->gui_type = ConfigItemDef::GUIType::textfield;
+    def->tooltip = L("Width of the bars between the openings of a cross grid pad.");
+    def->units = {L("mm")};
+    def->min = 0.5;
+    def->max = 20;
+    def->init_fn = init_with(2.);
+
     def = defs.add("pad_around_object", typeid(bool));
     def->location = Print;
     def->overrides_in = Locations{ Object };
@@ -1072,6 +1115,24 @@ void sla_config_init_fn(ConfigDefinitions& defs)
         def->max = 20;
         def->init_fn = init_with(1.);
 
+        def = defs.add(prefix.first + "support_head_shape", typeid(EnumWrapper));
+        def->label = prefix.second;
+        def->location = Print;
+        def->overrides_in = Locations{ Object };
+        def->row_group = L("Tip shape");
+        def->option_group = ConfigItemDef::OptionGroup::Print_Supports_SupportHead;
+        def->category = ConfigItemDef::Category::Print_Supports;
+        def->gui_type = ConfigItemDef::GUIType::combobox;
+        def->tooltip = L("Shape of the support tip where it touches the model. "
+                         "Ball is PrusaSlicer's rounded tip. Cone ends in a flat point "
+                         "as wide as the pinhead front diameter, like CHITUBOX, and "
+                         "leaves smaller marks.");
+        def->init_fn = init_with(
+            sla::HeadShape::ball,
+            {{int(sla::HeadShape::ball), "ball", L("Ball")},
+             {int(sla::HeadShape::cone), "cone", L("Cone (sharp tip)")}}
+        );
+
         def = defs.add(prefix.first + "support_pillar_diameter", typeid(double));
         def->label = prefix.second;
         def->location = Print;
@@ -1085,6 +1146,22 @@ void sla_config_init_fn(ConfigDefinitions& defs)
         def->min = 0;
         def->max = 15;
         def->init_fn = init_with(1.);
+
+        def = defs.add(prefix.first + "support_pillar_shape", typeid(EnumWrapper));
+        def->label = prefix.second;
+        def->location = Print;
+        def->overrides_in = Locations{ Object };
+        def->row_group = L("Pillar shape");
+        def->option_group = ConfigItemDef::OptionGroup::Print_Supports_SupportPillar;
+        def->category = ConfigItemDef::Category::Print_Supports;
+        def->gui_type = ConfigItemDef::GUIType::combobox;
+        def->tooltip = L("Cross-section of the support pillars. A square pillar is as wide "
+                         "as the pillar diameter, so it is never thinner than a round one.");
+        def->init_fn = init_with(
+            sla::PillarShape::round,
+            {{int(sla::PillarShape::round), "round", L("Round")},
+             {int(sla::PillarShape::square), "square", L("Square")}}
+        );
 
         def = defs.add(prefix.first + "support_small_pillar_diameter_percent", typeid(Percentage));
         def->label = prefix.second;
@@ -1207,6 +1284,23 @@ void sla_config_init_fn(ConfigDefinitions& defs)
         def->units = {L("mm")};
         def->min = 0;
         def->init_fn = init_with(1.);
+
+        def = defs.add(prefix.first + "support_base_shape", typeid(EnumWrapper));
+        def->label = prefix.second;
+        def->location = Print;
+        def->overrides_in = Locations{ Object };
+        def->row_group = L("Base shape");
+        def->option_group = ConfigItemDef::OptionGroup::Print_Supports_SupportPillar;
+        def->category = ConfigItemDef::Category::Print_Supports;
+        def->gui_type = ConfigItemDef::GUIType::combobox;
+        def->tooltip = L("Shape of the pillar base. Cone narrows from the base diameter "
+                         "to the pillar. Cylinder keeps the full base diameter up to the "
+                         "base height and holds better on the build plate.");
+        def->init_fn = init_with(
+            sla::BaseShape::cone,
+            {{int(sla::BaseShape::cone), "cone", L("Cone")},
+             {int(sla::BaseShape::cylinder), "cylinder", L("Cylinder")}}
+        );
 
         def = defs.add(prefix.first + "support_base_safety_distance", typeid(double));
         def->label = prefix.second;

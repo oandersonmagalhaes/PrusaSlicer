@@ -31,6 +31,7 @@ SupportTreeBuilder::SupportTreeBuilder(SupportTreeBuilder &&o)
     , m_pillars{std::move(o.m_pillars)}
     , m_bridges{std::move(o.m_bridges)}
     , m_crossbridges{std::move(o.m_crossbridges)}
+    , m_shapes{o.m_shapes}
     , m_meshcache{std::move(o.m_meshcache)}
     , m_meshcache_valid{o.m_meshcache_valid}
     , m_model_height{o.m_model_height}
@@ -42,6 +43,7 @@ SupportTreeBuilder::SupportTreeBuilder(const SupportTreeBuilder &o)
     , m_pillars{o.m_pillars}
     , m_bridges{o.m_bridges}
     , m_crossbridges{o.m_crossbridges}
+    , m_shapes{o.m_shapes}
     , m_meshcache{o.m_meshcache}
     , m_meshcache_valid{o.m_meshcache_valid}
     , m_model_height{o.m_model_height}
@@ -54,6 +56,7 @@ SupportTreeBuilder &SupportTreeBuilder::operator=(SupportTreeBuilder &&o)
     m_pillars = std::move(o.m_pillars);
     m_bridges = std::move(o.m_bridges);
     m_crossbridges = std::move(o.m_crossbridges);
+    m_shapes = o.m_shapes;
     m_meshcache = std::move(o.m_meshcache);
     m_meshcache_valid = o.m_meshcache_valid;
     m_model_height = o.m_model_height;
@@ -67,6 +70,7 @@ SupportTreeBuilder &SupportTreeBuilder::operator=(const SupportTreeBuilder &o)
     m_pillars = o.m_pillars;
     m_bridges = o.m_bridges;
     m_crossbridges = o.m_crossbridges;
+    m_shapes = o.m_shapes;
     m_meshcache = o.m_meshcache;
     m_meshcache_valid = o.m_meshcache_valid;
     m_model_height = o.m_model_height;
@@ -93,17 +97,17 @@ const indexed_triangle_set &SupportTreeBuilder::merged_mesh(size_t steps) const
     
     for (auto &head : m_heads) {
         if (ctl().stopcondition()) break;
-        if (head.is_valid()) its_merge(merged, get_mesh(head, steps));
+        if (head.is_valid()) its_merge(merged, get_mesh(head, steps, m_shapes));
     }
     
     for (auto &pill : m_pillars) {
         if (ctl().stopcondition()) break;
-        its_merge(merged, get_mesh(pill, steps));
+        its_merge(merged, get_mesh(pill, steps, m_shapes));
     }
 
     for (auto &pedest : m_pedestals) {
         if (ctl().stopcondition()) break;
-        its_merge(merged, get_mesh(pedest, steps));
+        its_merge(merged, get_mesh(pedest, steps, m_shapes));
     }
     
     for (auto &j : m_junctions) {
@@ -128,7 +132,7 @@ const indexed_triangle_set &SupportTreeBuilder::merged_mesh(size_t steps) const
 
     for (auto &anch : m_anchors) {
         if (ctl().stopcondition()) break;
-        its_merge(merged, get_mesh(anch, steps));
+        its_merge(merged, get_mesh(anch, steps, m_shapes));
     }
 
     if (ctl().stopcondition()) {

@@ -100,6 +100,9 @@ sla::SupportTreeConfig make_support_cfg(const SLAPrintObjectConfigView& c)
 
         scfg.max_bridges_on_pillar = unsigned(c.get<int>("support_max_bridges_on_pillar"));
         scfg.max_weight_on_model_support = c.get<double>("support_max_weight_on_model");
+        scfg.shapes = {c.get<Domain::sla::HeadShape>("support_head_shape"),
+                       c.get<Domain::sla::PillarShape>("support_pillar_shape"),
+                       c.get<Domain::sla::BaseShape>("support_base_shape")};
         break;
     }
     case Domain::sla::SupportTreeType::Branching:
@@ -109,7 +112,7 @@ sla::SupportTreeConfig make_support_cfg(const SLAPrintObjectConfigView& c)
         double pillar_r = 0.5 * c.get<double>("branchingsupport_pillar_diameter");
         scfg.head_back_radius_mm = pillar_r;
         scfg.head_fallback_radius_mm =
-            0.01 * c.get<double>("branchingsupport_small_pillar_diameter_percent") * pillar_r;
+            c.get<Percentage>("branchingsupport_small_pillar_diameter_percent").get_abs_value(1.0) * pillar_r;
         scfg.head_penetration_mm = c.get<double>("branchingsupport_head_penetration");
         scfg.head_width_mm = c.get<double>("branchingsupport_head_width");
         scfg.object_elevation_mm = is_zero_elevation(c) ?
@@ -128,6 +131,9 @@ sla::SupportTreeConfig make_support_cfg(const SLAPrintObjectConfigView& c)
 
         scfg.max_bridges_on_pillar = unsigned(c.get<int>("branchingsupport_max_bridges_on_pillar"));
         scfg.max_weight_on_model_support = c.get<double>("branchingsupport_max_weight_on_model");
+        scfg.shapes = {c.get<Domain::sla::HeadShape>("branchingsupport_head_shape"),
+                       c.get<Domain::sla::PillarShape>("branchingsupport_pillar_shape"),
+                       c.get<Domain::sla::BaseShape>("branchingsupport_base_shape")};
         break;
     }
     }
@@ -162,6 +168,13 @@ sla::PadConfig make_pad_cfg(const SLAPrintObjectConfigView& c)
     pcfg.max_merge_dist_mm = c.get<double>("pad_max_merge_distance");
     pcfg.wall_height_mm = c.get<double>("pad_wall_height");
     pcfg.brim_size_mm = c.get<double>("pad_brim_size");
+
+    pcfg.shape = c.get<Domain::sla::PadShape>("pad_shape");
+    pcfg.grid_opening_mm = c.get<double>("pad_grid_opening");
+    pcfg.grid_bar_mm = c.get<double>("pad_grid_bar_width");
+    // A cavity would cut the grid bars off from the pad rim.
+    if (pcfg.shape == Domain::sla::PadShape::grid)
+        pcfg.wall_height_mm = 0.;
 
     // set builtin pad implicitly ON
     pcfg.embed_object = builtin_pad_cfg(c);
@@ -522,11 +535,13 @@ const std::map<std::string, std::vector<Step>> invalidated_by{
     {"bottle_weight", steps({})},
     {"branchingsupport_base_diameter", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_base_height", steps({propagate(slaposSupportTree)})},
+    {"branchingsupport_base_shape", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_base_safety_distance", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_buildplate_only", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_critical_angle", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_head_front_diameter", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_head_penetration", steps({propagate(slaposSupportTree)})},
+    {"branchingsupport_head_shape", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_head_width", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_max_bridge_length", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_max_bridges_on_pillar", steps({propagate(slaposSupportTree)})},
@@ -535,6 +550,7 @@ const std::map<std::string, std::vector<Step>> invalidated_by{
     {"branchingsupport_object_elevation", steps({propagate(slaposObjectSlice)})},
     {"branchingsupport_pillar_connection_mode", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_pillar_diameter", steps({propagate(slaposSupportTree)})},
+    {"branchingsupport_pillar_shape", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_pillar_widening_factor", steps({propagate(slaposSupportTree)})},
     {"branchingsupport_small_pillar_diameter_percent", steps({propagate(slaposSupportTree)})},
     {"delay_after_exposure", steps({propagate(slapsMergeSlicesAndEval)})},
@@ -580,11 +596,14 @@ const std::map<std::string, std::vector<Step>> invalidated_by{
     {"pad_around_object_everywhere", steps({propagate(slaposObjectSlice)})},
     {"pad_brim_size", steps({propagate(slaposPad)})},
     {"pad_enable", steps({propagate(slaposObjectSlice)})},
+    {"pad_grid_bar_width", steps({propagate(slaposPad)})},
+    {"pad_grid_opening", steps({propagate(slaposPad)})},
     {"pad_max_merge_distance", steps({propagate(slaposPad)})},
     {"pad_object_connector_penetration", steps({propagate(slaposPad)})},
     {"pad_object_connector_stride", steps({propagate(slaposPad)})},
     {"pad_object_connector_width", steps({propagate(slaposPad)})},
     {"pad_object_gap", steps({propagate(slaposSupportTree)})},
+    {"pad_shape", steps({propagate(slaposPad)})},
     {"pad_wall_height", steps({propagate(slaposPad)})},
     {"pad_wall_slope", steps({propagate(slaposPad)})},
     {"pad_wall_thickness", steps({propagate(slaposObjectSlice)})},
@@ -603,12 +622,14 @@ const std::map<std::string, std::vector<Step>> invalidated_by{
     {"slow_tilt_time", steps({})},
     {"support_base_diameter", steps({propagate(slaposSupportTree)})},
     {"support_base_height", steps({propagate(slaposSupportTree)})},
+    {"support_base_shape", steps({propagate(slaposSupportTree)})},
     {"support_base_safety_distance", steps({propagate(slaposSupportTree)})},
     {"support_buildplate_only", steps({propagate(slaposSupportTree)})},
     {"support_critical_angle", steps({propagate(slaposSupportTree)})},
     {"support_enforcers_only", steps({propagate(slaposSupportPoints)})},
     {"support_head_front_diameter", steps({propagate(slaposSupportTree)})},
     {"support_head_penetration", steps({propagate(slaposSupportTree)})},
+    {"support_head_shape", steps({propagate(slaposSupportTree)})},
     {"support_head_width", steps({propagate(slaposSupportTree)})},
     {"support_max_bridge_length", steps({propagate(slaposSupportTree)})},
     {"support_max_bridges_on_pillar", steps({propagate(slaposSupportTree)})},
@@ -617,6 +638,7 @@ const std::map<std::string, std::vector<Step>> invalidated_by{
     {"support_object_elevation", steps({propagate(slaposObjectSlice)})},
     {"support_pillar_connection_mode", steps({propagate(slaposSupportTree)})},
     {"support_pillar_diameter", steps({propagate(slaposSupportTree)})},
+    {"support_pillar_shape", steps({propagate(slaposSupportTree)})},
     {"support_pillar_widening_factor", steps({propagate(slaposSupportTree)})},
     {"support_points_density_relative", steps({propagate(slaposSupportPoints)})},
     {"support_small_pillar_diameter_percent", steps({propagate(slaposSupportTree)})},

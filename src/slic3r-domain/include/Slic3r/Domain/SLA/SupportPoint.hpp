@@ -24,6 +24,10 @@ enum class SupportPointType {
     //edge
 };
 
+// Size of the support grown from a point, picked in manual editing like
+// CHITUBOX's Light / Medium / Heavy. from_settings uses the print settings.
+enum class SupportPointSize : unsigned char { from_settings, light, medium, heavy };
+
 /// <summary>
 /// Stereolithography(SLA) support point
 /// </summary>
@@ -38,6 +42,8 @@ struct SupportPoint
 
     // type
     SupportPointType type{SupportPointType::manual_add};
+
+    SupportPointSize size{SupportPointSize::from_settings};
 
     bool is_island() const { return type == SupportPointType::island; }
 

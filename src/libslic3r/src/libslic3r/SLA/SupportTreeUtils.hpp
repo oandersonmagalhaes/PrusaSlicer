@@ -10,6 +10,7 @@
 #include <libslic3r/MeshNormals.hpp>
 #include <libslic3r/Geometry.hpp>
 #include <libslic3r/SLA/SupportTreeBuilder.hpp>
+#include <libslic3r/SLA/SupportSizes.hpp>
 
 #include <boost/variant.hpp>
 #include <boost/container/small_vector.hpp>
@@ -324,7 +325,8 @@ std::vector<size_t> non_duplicate_suppt_indices(const PtIndex &index,
 template<class Ex>
 bool optimize_pinhead_placement(Ex                     policy,
                                 const SupportableMesh &m,
-                                Head                  &head)
+                                Head                  &head,
+                                const HeadDims        &dims)
 {
     Vec3d n = get_normal(m.emesh, head.pos);
     assert(std::abs(n.norm() - 1.0) < EPSILON);
@@ -349,15 +351,15 @@ bool optimize_pinhead_placement(Ex                     policy,
     // save the head (pinpoint) position
     Vec3d hp = head.pos;
 
-    double lmin = m.cfg.head_width_mm, lmax = lmin;
+    double lmin = dims.width, lmax = lmin;
 
-    if (back_r < m.cfg.head_back_radius_mm) {
-        lmin = 0., lmax = m.cfg.head_penetration_mm;
+    if (back_r < dims.r_back) {
+        lmin = 0., lmax = dims.penetration;
     }
 
     // The distance needed for a pinhead to not collide with model.
     double w = lmin + 2 * back_r + 2 * m.cfg.head_front_radius_mm -
-               m.cfg.head_penetration_mm;
+               dims.penetration;
 
     double pin_r = head.r_pin_mm;
 
@@ -410,7 +412,7 @@ bool optimize_pinhead_placement(Ex                     policy,
         ret = true;
     } else if (back_r > m.cfg.head_fallback_radius_mm) {
         head.r_back_mm = m.cfg.head_fallback_radius_mm;
-        ret = optimize_pinhead_placement(policy, m, head);
+        ret = optimize_pinhead_placement(policy, m, head, dims);
     }
 
     return ret;
@@ -424,17 +426,18 @@ std::optional<Head> calculate_pinhead_placement(Ex                     policy,
     if (suppt_idx >= sm.pts->size())
         return {};
 
-    const Domain::SLA::SupportPoint &sp = sm.pts->at(suppt_idx);
+    const Domain::SLA::SupportPoint &sp   = sm.pts->at(suppt_idx);
+    const HeadDims                   dims = head_dims(sm.cfg, sp);
     Head                head{
-        sm.cfg.head_back_radius_mm,
+        dims.r_back,
         sp.head_front_radius,
         0.,
-        sm.cfg.head_penetration_mm,
+        dims.penetration,
         Vec3d::Zero(),        // dir
         sp.pos.cast<double>() // displacement
     };
 
-    if (optimize_pinhead_placement(policy, sm, head)) {
+    if (optimize_pinhead_placement(policy, sm, head, dims)) {
         head.id = long(suppt_idx);
 
         return head;
