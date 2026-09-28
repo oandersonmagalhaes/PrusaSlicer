@@ -49,6 +49,12 @@ Render::Icon category_render_icon(
     case Domain::ConfigItemDef::Category::Printer_CustomGCode:
         icon = Render::Icon::CustomGCode;
         break;
+    case Domain::ConfigItemDef::Category::Print_Pad:
+        icon = Render::Icon::Pad;
+        break;
+    case Domain::ConfigItemDef::Category::Print_Hollowing:
+        icon = Render::Icon::Hollowing;
+        break;
     case Domain::ConfigItemDef::Category::Print_OutputOptions:
         icon = Render::Icon::Output;
         break;
@@ -69,6 +75,9 @@ Render::Icon category_render_icon(
     case Domain::ConfigItemDef::Category::Filament_Overrides:
         icon = Render::Icon::Vector;
         break;
+    case Domain::ConfigItemDef::Category::Filament_MaterialPrintingProfile:
+        icon = Render::Icon::Time;
+        break;
     case Domain::ConfigItemDef::Category::Printer_General:
         icon = pt == Domain::PrinterTechnology::FFF ? Render::Icon::PrinterIconMarker :
                                                       Render::Icon::PrinterSlaIconMarker;
@@ -85,6 +94,7 @@ Render::Icon category_render_icon(
     case Domain::ConfigItemDef::Category::Printer_SingleExtruderMMSetup:
         icon = Render::Icon::SingleExtruder;
         break;
+    case Domain::ConfigItemDef::Category::Filament_Dependencies: [[fallthrough]];
     case Domain::ConfigItemDef::Category::AppConfig_General: [[fallthrough]];
     case Domain::ConfigItemDef::Category::AppConfig_Services: [[fallthrough]];
     case Domain::ConfigItemDef::Category::PhysicalPrinter_General :
